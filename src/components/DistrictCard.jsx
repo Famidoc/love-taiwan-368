@@ -46,25 +46,25 @@ export default function DistrictCard({
     }`}>
       
       {/* Card Header */}
-      <div className="p-4 pb-3 border-b border-slate-100">
+      <div className="p-3.5 sm:p-4 pb-2.5 sm:pb-3 border-b border-slate-100">
         <div className="flex items-start justify-between gap-2">
           
           <div>
-            <div className="flex items-center gap-2">
-              <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border ${regionColors[district.region] || 'bg-slate-100 text-slate-700'}`}>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <span className={`px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold border ${regionColors[district.region] || 'bg-slate-100 text-slate-700'}`}>
                 {district.region}
               </span>
-              <span className="text-xs text-slate-400 font-mono">
+              <span className="text-[11px] text-slate-400 font-mono">
                 #{district.id.toString().padStart(3, '0')} • {district.postalCode}
               </span>
             </div>
             
             <div className="flex items-baseline gap-1.5 mt-1">
               <span className="text-xs font-semibold text-slate-500">{district.county}</span>
-              <h3 className="text-lg font-black text-slate-900 font-serif-tw tracking-wide">
+              <h3 className="text-base sm:text-lg font-black text-slate-900 font-serif-tw tracking-wide">
                 {district.township}
               </h3>
-              <span className="text-[11px] text-slate-400">({district.districtType})</span>
+              <span className="text-[10px] sm:text-[11px] text-slate-400">({district.districtType})</span>
             </div>
           </div>
 
@@ -76,7 +76,7 @@ export default function DistrictCard({
                 <span>全制霸</span>
               </span>
             ) : totalChecked > 0 ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
                 <span>{totalChecked}/6 完成</span>
               </span>
             ) : (
@@ -89,7 +89,7 @@ export default function DistrictCard({
         </div>
 
         {/* Progress Bar inside card */}
-        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mt-3">
+        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden mt-2.5">
           <div
             className={`h-full rounded-full transition-all duration-300 ${
               isAllCompleted ? 'bg-emerald-500' : 'bg-amber-400'
@@ -100,11 +100,11 @@ export default function DistrictCard({
       </div>
 
       {/* Spots List: Attractions & Foods */}
-      <div className="p-4 space-y-4 flex-1">
+      <div className="p-3.5 sm:p-4 space-y-3.5 flex-1">
         
         {/* Attractions */}
         <div>
-          <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
             <span className="flex items-center gap-1.5 text-sky-700">
               <Camera className="w-3.5 h-3.5" />
               <span>必訪 3 大景點</span>
@@ -146,7 +146,7 @@ export default function DistrictCard({
 
         {/* Foods */}
         <div>
-          <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
+          <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-1.5">
             <span className="flex items-center gap-1.5 text-orange-700">
               <Utensils className="w-3.5 h-3.5" />
               <span>必吃 3 大美食</span>
@@ -224,23 +224,23 @@ export default function DistrictCard({
 
       </div>
 
-      {/* Card Footer Actions */}
-      <div className="px-4 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2">
+      {/* Card Footer Actions: Explicitly visible on Mobile & Desktop */}
+      <div className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2">
         <button
           onClick={() => onOpenCheckin(district)}
-          className="flex-1 py-1.5 px-3 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs"
+          className="flex-1 py-1.5 px-2.5 rounded-xl bg-white hover:bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center justify-center gap-1 transition-all shadow-xs"
         >
-          <Edit3 className="w-3.5 h-3.5 text-emerald-600" />
-          <span>{totalChecked > 0 ? '編輯記錄/拍照' : '打卡與隨手記'}</span>
+          <Edit3 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <span>{totalChecked > 0 ? '記錄 / 拍照' : '打卡 / 隨手記'}</span>
         </button>
 
         <button
           onClick={() => onOpenShareCard(district)}
-          className="p-1.5 px-2.5 rounded-xl bg-white hover:bg-amber-50 text-amber-800 border border-amber-200 text-xs font-semibold flex items-center justify-center gap-1 transition-all shadow-xs"
+          className="py-1.5 px-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center justify-center gap-1 transition-all shadow-xs"
           title="生成足跡拍立得卡片"
         >
-          <Share2 className="w-3.5 h-3.5 text-amber-600" />
-          <span className="hidden sm:inline">拍立得</span>
+          <Share2 className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+          <span>📸 拍立得</span>
         </button>
       </div>
 

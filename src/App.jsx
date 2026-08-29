@@ -254,7 +254,7 @@ export default function App() {
         {/* Banner Hero */}
         <div className="relative rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-4 sm:p-6 mb-5 overflow-hidden shadow-lg border border-emerald-800">
           <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 right-1/4 w-60 h-60 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10">
             
@@ -474,6 +474,7 @@ export default function App() {
         isOpen={Boolean(activeCheckinDistrict)}
         onClose={() => setActiveCheckinDistrict(null)}
         onSaveProgress={handleSaveProgress}
+        onOpenShareCard={(d) => setActiveShareDistrict(d)}
       />
 
       {/* 2. Share Polaroid Achievement Card Modal */}
