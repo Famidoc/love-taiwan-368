@@ -5,6 +5,7 @@
 
 const FOLDER_NAME = '愛台灣368行腳_備份';
 const BACKUP_FILE_NAME = 'taiwan368_backup.json';
+export const DEFAULT_GOOGLE_CLIENT_ID = '948492589681-blall4lcdb0485ckr488274935ji7joa.apps.googleusercontent.com';
 
 class GDriveSyncService {
   constructor() {
@@ -21,7 +22,7 @@ class GDriveSyncService {
 
     try {
       this.tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId || 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com',
+        client_id: clientId || DEFAULT_GOOGLE_CLIENT_ID,
         scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
         callback: async (tokenResponse) => {
           if (tokenResponse.error) {
@@ -98,7 +99,7 @@ class GDriveSyncService {
       throw new Error('尚未取得 Google 授權，請先登入 Google 帳號');
     }
 
-    // Search for backup file
+    // Search for backup file in user's Drive
     const searchRes = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=name='${BACKUP_FILE_NAME}' and trashed=false&orderBy=modifiedTime desc`,
       {
@@ -108,7 +109,7 @@ class GDriveSyncService {
 
     const data = await searchRes.json();
     if (!data.files || data.files.length === 0) {
-      throw new Error('在您的 Google 雲端硬碟中找不到過去的備份檔');
+      throw new Error('在您的 Google 雲端硬碟中找不到過去的備份檔 (taiwan368_backup.json)');
     }
 
     const fileId = data.files[0].id;
@@ -118,6 +119,10 @@ class GDriveSyncService {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       }
     );
+
+    if (!downloadRes.ok) {
+      throw new Error('從 Google 雲端下載備份失敗');
+    }
 
     return await downloadRes.json();
   }
