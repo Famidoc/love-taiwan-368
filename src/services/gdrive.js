@@ -68,7 +68,7 @@ class GDriveSyncService {
   async getOrCreateAppFolder() {
     try {
       const q = `mimeType='application/vnd.google-apps.folder' and name='${FOLDER_NAME}' and trashed=false`;
-      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       const data = await searchRes.json();
@@ -94,13 +94,13 @@ class GDriveSyncService {
       const newFolder = await createRes.json();
       return newFolder.id;
     } catch (e) {
-      console.warn('Could not create/find specific folder, defaulting to root:', e);
+      console.warn('Could not create/find specific folder:', e);
       return null;
     }
   }
 
   /**
-   * Upload or overwrite backup file inside the '愛台灣368行腳' folder
+   * Upload, overwrite and move backup file directly into '愛台灣368行腳' folder
    */
   async uploadBackupToDrive(backupData) {
     if (!this.accessToken) {
@@ -110,23 +110,25 @@ class GDriveSyncService {
     const folderId = await this.getOrCreateAppFolder();
     const fileContent = JSON.stringify(backupData, null, 2);
 
-    // Check if backup file already exists in Drive
+    // Check if backup file already exists anywhere in user's Drive
     let existingFileId = null;
+    let existingParents = [];
     try {
       const q = `name='${BACKUP_FILE_NAME}' and trashed=false`;
-      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=modifiedTime desc`, {
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,parents)&orderBy=modifiedTime desc`, {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       const searchData = await searchRes.json();
       if (searchData.files && searchData.files.length > 0) {
         existingFileId = searchData.files[0].id;
+        existingParents = searchData.files[0].parents || [];
       }
     } catch (e) {
       console.warn('Search existing file warning:', e);
     }
 
     if (existingFileId) {
-      // Overwrite existing backup file directly
+      // Overwrite existing backup file AND move into target folder if not already inside
       const form = new FormData();
       const metadata = {
         name: BACKUP_FILE_NAME,
@@ -135,7 +137,15 @@ class GDriveSyncService {
       form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
       form.append('file', new Blob([fileContent], { type: 'application/json' }));
 
-      const patchRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart`, {
+      let patchUrl = `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart`;
+      if (folderId && !existingParents.includes(folderId)) {
+        patchUrl += `&addParents=${encodeURIComponent(folderId)}`;
+        if (existingParents.length > 0) {
+          patchUrl += `&removeParents=${encodeURIComponent(existingParents.join(','))}`;
+        }
+      }
+
+      const patchRes = await fetch(patchUrl, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${this.accessToken}` },
         body: form
@@ -147,7 +157,7 @@ class GDriveSyncService {
       }
       return await patchRes.json();
     } else {
-      // Create new file inside folder
+      // Create new file directly inside folder
       const metadata = {
         name: BACKUP_FILE_NAME,
         mimeType: 'application/json',
