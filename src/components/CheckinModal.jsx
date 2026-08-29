@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Camera, 
@@ -10,9 +10,9 @@ import {
   Circle, 
   Utensils, 
   Upload, 
-  Loader2,
-  Share2,
-  Image as ImageIcon
+  Loader2, 
+  Share2, 
+  Image as ImageIcon 
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { compressImage } from '../services/storage';
@@ -26,6 +26,9 @@ export default function CheckinModal({
   onOpenShareCard
 }) {
   if (!isOpen || !district) return null;
+
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
 
   const [attractionsChecked, setAttractionsChecked] = useState([]);
   const [foodsChecked, setFoodsChecked] = useState([]);
@@ -80,8 +83,8 @@ export default function CheckinModal({
     }
   };
 
-  const handlePhotoUpload = async (e) => {
-    const files = Array.from(e.target.files || []);
+  const handlePhotoFiles = async (filesList) => {
+    const files = Array.from(filesList || []);
     if (files.length === 0) return;
 
     if (photos.length + files.length > 3) {
@@ -93,7 +96,8 @@ export default function CheckinModal({
     try {
       const compressedList = [];
       for (const file of files) {
-        const dataUrl = await compressImage(file, 900, 0.82);
+        console.log('Processing photo:', file.name, file.size, file.type);
+        const dataUrl = await compressImage(file, 1000, 0.82);
         compressedList.push({
           id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
           dataUrl,
@@ -103,10 +107,9 @@ export default function CheckinModal({
       setPhotos(prev => [...prev, ...compressedList]);
     } catch (err) {
       console.error('Image compression failed:', err);
-      alert('照片處理失敗，請重試');
+      alert('照片處理失敗：' + (err.message || '請重新選取'));
     } finally {
       setIsCompressing(false);
-      e.target.value = '';
     }
   };
 
@@ -331,6 +334,31 @@ export default function CheckinModal({
               </span>
             </div>
 
+            {/* Hidden Inputs with Refs for bulletproof native triggers */}
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={(e) => {
+                handlePhotoFiles(e.target.files);
+                e.target.value = '';
+              }}
+              className="hidden"
+            />
+
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                handlePhotoFiles(e.target.files);
+                e.target.value = '';
+              }}
+              className="hidden"
+            />
+
             {/* Existing Photos Grid */}
             {photos.length > 0 && (
               <div className="grid grid-cols-3 gap-2 mb-2.5">
@@ -354,49 +382,41 @@ export default function CheckinModal({
               </div>
             )}
 
-            {/* Two Dedicated Upload Buttons: Camera vs Photo Album */}
+            {/* Dedicated Upload Action Buttons */}
             {photos.length < 3 && (
               <div className="grid grid-cols-2 gap-2">
                 
                 {/* 1. Direct Camera Button */}
-                <label className={`py-3 px-2 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/60 hover:bg-emerald-100/60 flex flex-col items-center justify-center cursor-pointer transition-all ${
-                  isCompressing ? 'opacity-50 pointer-events-none' : ''
-                }`}>
+                <button
+                  type="button"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={isCompressing}
+                  className="py-3 px-2 rounded-2xl border-2 border-dashed border-emerald-300 hover:border-emerald-500 bg-emerald-50/70 hover:bg-emerald-100/70 flex flex-col items-center justify-center transition-all disabled:opacity-50"
+                >
                   <Camera className="w-5 h-5 text-emerald-700 mb-1" />
                   <span className="text-xs font-bold text-emerald-900">
                     直接相機拍照
                   </span>
                   <span className="text-[10px] text-emerald-600">
-                    即時開啟相機拍攝
+                    開啟相機鏡頭拍攝
                   </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                </label>
+                </button>
 
                 {/* 2. Photo Album Gallery Button */}
-                <label className={`py-3 px-2 rounded-2xl border-2 border-dashed border-sky-300 hover:border-sky-500 bg-sky-50/60 hover:bg-sky-100/60 flex flex-col items-center justify-center cursor-pointer transition-all ${
-                  isCompressing ? 'opacity-50 pointer-events-none' : ''
-                }`}>
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={isCompressing}
+                  className="py-3 px-2 rounded-2xl border-2 border-dashed border-sky-300 hover:border-sky-500 bg-sky-50/70 hover:bg-sky-100/70 flex flex-col items-center justify-center transition-all disabled:opacity-50"
+                >
                   <ImageIcon className="w-5 h-5 text-sky-700 mb-1" />
                   <span className="text-xs font-bold text-sky-900">
                     從相簿選照片
                   </span>
                   <span className="text-[10px] text-sky-600">
-                    選取手機現有照片
+                    選取手機相簿圖檔
                   </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                </label>
+                </button>
 
               </div>
             )}
@@ -404,7 +424,7 @@ export default function CheckinModal({
             {isCompressing && (
               <div className="mt-2 text-xs text-emerald-700 font-semibold flex items-center justify-center gap-1.5 py-1">
                 <Loader2 className="w-4 h-4 animate-spin text-emerald-600" />
-                <span>正在快速優化照片中...</span>
+                <span>正在快速優化壓縮照片中...</span>
               </div>
             )}
           </div>

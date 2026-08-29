@@ -5,17 +5,17 @@ const STORAGE_KEY_PROFILE = 'taiwan368_user_profile';
 const STORAGE_KEY_SETTINGS = 'taiwan368_user_settings';
 
 /**
- * Image compressor using HTML5 Canvas
- * Reduces 3-10MB mobile photos to ~100KB WebP/JPEG for fast storage and instant display
+ * Super robust mobile image compressor
+ * Handles 12MP-48MP camera photos instantly using createImageBitmap or URL.createObjectURL
  */
-export async function compressImage(file, maxWidth = 900, quality = 0.82) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
+export async function compressImage(file, maxWidth = 1000, quality = 0.82) {
+  try {
+    // 1. Try modern native createImageBitmap (fastest & lowest memory)
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bitmap = await createImageBitmap(file);
+        let width = bitmap.width;
+        let height = bitmap.height;
 
         if (width > maxWidth) {
           height = Math.round((height * maxWidth) / width);
@@ -27,22 +27,67 @@ export async function compressImage(file, maxWidth = 900, quality = 0.82) {
         canvas.height = height;
 
         const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
+        ctx.drawImage(bitmap, 0, 0, width, height);
 
-        // Try WebP, fallback to JPEG
-        let dataUrl = canvas.toDataURL('image/webp', quality);
-        if (!dataUrl.startsWith('data:image/webp')) {
-          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        bitmap.close?.();
+        return dataUrl;
+      } catch (bitmapErr) {
+        console.warn('createImageBitmap failed, falling back to Image object:', bitmapErr);
+      }
+    }
+
+    // 2. Fallback using URL.createObjectURL + HTMLImageElement
+    return new Promise((resolve, reject) => {
+      const blobUrl = URL.createObjectURL(file);
+      const img = new Image();
+
+      img.onload = () => {
+        URL.revokeObjectURL(blobUrl);
+        try {
+          let width = img.naturalWidth || img.width;
+          let height = img.naturalHeight || img.height;
+
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', quality);
+          resolve(dataUrl);
+        } catch (canvasErr) {
+          reject(canvasErr);
         }
-
-        resolve(dataUrl);
       };
-      img.onerror = reject;
-      img.src = event.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+
+      img.onerror = (err) => {
+        URL.revokeObjectURL(blobUrl);
+        // Last resort: read directly with FileReader
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      };
+
+      img.src = blobUrl;
+    });
+  } catch (err) {
+    console.error('Fatal compression error:', err);
+    // Ultimate fallback: FileReader Base64
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
 }
 
 /**
@@ -55,7 +100,6 @@ export async function loadUserProgress() {
     return data || {};
   } catch (err) {
     console.error('Error loading user progress from IndexedDB:', err);
-    // fallback to localStorage
     const local = localStorage.getItem(STORAGE_KEY_PROGRESS);
     return local ? JSON.parse(local) : {};
   }
@@ -88,7 +132,7 @@ export async function clearAllUserProgress() {
 }
 
 /**
- * Load user profile (nickname, avatar, privacy, google sync info)
+ * Load user profile
  */
 export function loadUserProfile() {
   const defaultProfile = {
