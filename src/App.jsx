@@ -460,7 +460,10 @@ export default function App() {
           <p className="text-xs text-slate-400">
             共 368 行政區 • 1,104 必訪景點 • 1,104 必吃美食 • 離線優先 PWA
           </p>
-          <p className="text-[11px] text-slate-400 pt-2">
+          <p className="text-xs text-amber-400 font-medium tracking-wide pt-2">
+            @2026 by Famidoc Chang & Antigravity 2.0
+          </p>
+          <p className="text-[11px] text-slate-500">
             Made with ❤️ for Taiwan Explorers. 所有打卡資料均妥善保存在您的設備中。
           </p>
         </div>

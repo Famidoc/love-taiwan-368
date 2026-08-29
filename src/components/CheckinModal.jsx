@@ -12,7 +12,8 @@ import {
   Upload, 
   Loader2, 
   Share2, 
-  Image as ImageIcon 
+  Image as ImageIcon,
+  MapPin
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { compressImage } from '../services/storage';
@@ -81,6 +82,11 @@ export default function CheckinModal({
         colors: ['#10b981', '#f59e0b', '#0284c7', '#ec4899']
       });
     }
+  };
+
+  const getGoogleMapsUrl = (spotName) => {
+    const query = `${district.county}${district.township} ${spotName}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
   };
 
   const handlePhotoFiles = async (filesList) => {
@@ -214,10 +220,10 @@ export default function CheckinModal({
               {district.attractions.map((att, idx) => {
                 const isChecked = attractionsChecked.includes(att.id);
                 return (
-                  <button
+                  <div
                     key={att.id}
                     onClick={() => toggleAttraction(att.id)}
-                    className={`w-full p-2.5 sm:p-3 rounded-2xl text-left text-xs sm:text-sm flex items-center justify-between transition-all border ${
+                    className={`w-full p-2.5 sm:p-3 rounded-2xl text-left text-xs sm:text-sm flex items-center justify-between transition-all border cursor-pointer select-none ${
                       isChecked
                         ? 'bg-sky-50 text-sky-950 border-sky-300 font-semibold ring-1 ring-sky-200'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -229,12 +235,28 @@ export default function CheckinModal({
                       </span>
                       <span>{att.name}</span>
                     </div>
-                    {isChecked ? (
-                      <CheckCircle2 className="w-5 h-5 text-sky-600 fill-sky-100" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-slate-300" />
-                    )}
-                  </button>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Google Maps Pin */}
+                      <a
+                        href={getGoogleMapsUrl(att.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 text-slate-400 hover:text-sky-600 hover:bg-sky-100 rounded-lg transition-colors flex items-center gap-1 text-[11px]"
+                        title="開啟 Google 地圖定位導航"
+                      >
+                        <MapPin className="w-4 h-4 text-sky-500" />
+                        <span className="text-[10px] text-sky-700 hidden xs:inline font-normal">導航</span>
+                      </a>
+
+                      {isChecked ? (
+                        <CheckCircle2 className="w-5 h-5 text-sky-600 fill-sky-100" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-slate-300" />
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
@@ -250,10 +272,10 @@ export default function CheckinModal({
               {district.foods.map((food, idx) => {
                 const isChecked = foodsChecked.includes(food.id);
                 return (
-                  <button
+                  <div
                     key={food.id}
                     onClick={() => toggleFood(food.id)}
-                    className={`w-full p-2.5 sm:p-3 rounded-2xl text-left text-xs sm:text-sm flex items-center justify-between transition-all border ${
+                    className={`w-full p-2.5 sm:p-3 rounded-2xl text-left text-xs sm:text-sm flex items-center justify-between transition-all border cursor-pointer select-none ${
                       isChecked
                         ? 'bg-orange-50 text-orange-950 border-orange-300 font-semibold ring-1 ring-orange-200'
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -265,12 +287,28 @@ export default function CheckinModal({
                       </span>
                       <span>{food.name}</span>
                     </div>
-                    {isChecked ? (
-                      <CheckCircle2 className="w-5 h-5 text-orange-600 fill-orange-100" />
-                    ) : (
-                      <Circle className="w-5 h-5 text-slate-300" />
-                    )}
-                  </button>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      {/* Google Maps Pin */}
+                      <a
+                        href={getGoogleMapsUrl(food.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-100 rounded-lg transition-colors flex items-center gap-1 text-[11px]"
+                        title="開啟 Google 地圖定位導航"
+                      >
+                        <MapPin className="w-4 h-4 text-orange-500" />
+                        <span className="text-[10px] text-orange-700 hidden xs:inline font-normal">導航</span>
+                      </a>
+
+                      {isChecked ? (
+                        <CheckCircle2 className="w-5 h-5 text-orange-600 fill-orange-100" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-slate-300" />
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>

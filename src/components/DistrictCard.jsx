@@ -9,7 +9,8 @@ import {
   Edit3, 
   Star, 
   Image as ImageIcon,
-  Sparkles
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 
 export default function DistrictCard({
@@ -34,6 +35,11 @@ export default function DistrictCard({
     '南部': 'bg-amber-100 text-amber-800 border-amber-200',
     '東部': 'bg-indigo-100 text-indigo-800 border-indigo-200',
     '離島': 'bg-purple-100 text-purple-800 border-purple-200',
+  };
+
+  const getGoogleMapsUrl = (spotName) => {
+    const query = `${district.county}${district.township} ${spotName}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
   };
 
   return (
@@ -118,27 +124,43 @@ export default function DistrictCard({
             {district.attractions.map((att, idx) => {
               const isChecked = attractionsChecked.includes(att.id);
               return (
-                <button
+                <div
                   key={att.id}
                   onClick={() => onToggleSpot(district.id, 'attraction', att.id)}
-                  className={`w-full text-left p-2 rounded-xl text-xs flex items-center justify-between transition-all border ${
+                  className={`w-full p-2 rounded-xl text-xs flex items-center justify-between transition-all border cursor-pointer select-none ${
                     isChecked
                       ? 'bg-sky-50 text-sky-900 border-sky-200 font-medium'
                       : 'bg-slate-50/70 text-slate-600 border-slate-100 hover:bg-slate-100 hover:text-slate-800'
                   }`}
                 >
-                  <div className="flex items-center gap-2 truncate pr-2">
+                  <div className="flex items-center gap-1.5 truncate pr-1">
                     <span className="text-[10px] font-mono text-slate-400 shrink-0">景點{idx + 1}</span>
                     <span className="truncate">{att.name}</span>
                   </div>
-                  <div className="shrink-0">
-                    {isChecked ? (
-                      <CheckCircle2 className="w-4 h-4 text-sky-600 fill-sky-100" />
-                    ) : (
-                      <Circle className="w-4 h-4 text-slate-300" />
-                    )}
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Google Maps Pin Link */}
+                    <a
+                      href={getGoogleMapsUrl(att.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1 text-slate-400 hover:text-sky-600 hover:bg-sky-100 rounded-lg transition-colors"
+                      title="開啟 Google 地圖定位導航"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-sky-500" />
+                    </a>
+
+                    {/* Checkbox Icon */}
+                    <div>
+                      {isChecked ? (
+                        <CheckCircle2 className="w-4 h-4 text-sky-600 fill-sky-100" />
+                      ) : (
+                        <Circle className="w-4 h-4 text-slate-300" />
+                      )}
+                    </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -160,27 +182,43 @@ export default function DistrictCard({
             {district.foods.map((food, idx) => {
               const isChecked = foodsChecked.includes(food.id);
               return (
-                <button
+                <div
                   key={food.id}
                   onClick={() => onToggleSpot(district.id, 'food', food.id)}
-                  className={`w-full text-left p-2 rounded-xl text-xs flex items-center justify-between transition-all border ${
+                  className={`w-full p-2 rounded-xl text-xs flex items-center justify-between transition-all border cursor-pointer select-none ${
                     isChecked
                       ? 'bg-orange-50 text-orange-950 border-orange-200 font-medium'
                       : 'bg-slate-50/70 text-slate-600 border-slate-100 hover:bg-slate-100 hover:text-slate-800'
                   }`}
                 >
-                  <div className="flex items-center gap-2 truncate pr-2">
+                  <div className="flex items-center gap-1.5 truncate pr-1">
                     <span className="text-[10px] font-mono text-slate-400 shrink-0">美食{idx + 1}</span>
                     <span className="truncate">{food.name}</span>
                   </div>
-                  <div className="shrink-0">
-                    {isChecked ? (
-                      <CheckCircle2 className="w-4 h-4 text-orange-600 fill-orange-100" />
-                    ) : (
-                      <Circle className="w-4 h-4 text-slate-300" />
-                    )}
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Google Maps Pin Link */}
+                    <a
+                      href={getGoogleMapsUrl(food.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="p-1 text-slate-400 hover:text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
+                      title="開啟 Google 地圖定位導航"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-orange-500" />
+                    </a>
+
+                    {/* Checkbox Icon */}
+                    <div>
+                      {isChecked ? (
+                        <CheckCircle2 className="w-4 h-4 text-orange-600 fill-orange-100" />
+                      ) : (
+                        <Circle className="w-4 h-4 text-slate-300" />
+                      )}
+                    </div>
                   </div>
-                </button>
+                </div>
               );
             })}
           </div>
@@ -215,7 +253,7 @@ export default function DistrictCard({
                     "{progress.notes}"
                   </p>
                 ) : (
-                  <span className="text-[10px] text-slate-400">已附佐證照片</span>
+                  <span className="text-[10px] text-slate-400">已附 {progress.photos.length} 張佐證照片</span>
                 )}
               </div>
             </div>
@@ -224,7 +262,7 @@ export default function DistrictCard({
 
       </div>
 
-      {/* Card Footer Actions: Explicitly visible on Mobile & Desktop */}
+      {/* Card Footer Actions */}
       <div className="px-3.5 py-2.5 sm:px-4 sm:py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between gap-2">
         <button
           onClick={() => onOpenCheckin(district)}
