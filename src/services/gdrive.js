@@ -3,7 +3,6 @@
  * Allows users to backup and restore their 368 footprint to their personal Google Drive folder
  */
 
-const FOLDER_NAME = '愛台灣368行腳_備份';
 const BACKUP_FILE_NAME = 'taiwan368_backup.json';
 export const DEFAULT_GOOGLE_CLIENT_ID = '948492589681-blall4lcdb0485ckr488274935ji7joa.apps.googleusercontent.com';
 
@@ -23,7 +22,7 @@ class GDriveSyncService {
     try {
       this.tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: clientId || DEFAULT_GOOGLE_CLIENT_ID,
-        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email',
+        scope: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/userinfo.email',
         callback: async (tokenResponse) => {
           if (tokenResponse.error) {
             console.error('OAuth error:', tokenResponse.error);
