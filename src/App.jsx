@@ -12,7 +12,8 @@ import {
   Utensils, 
   Share2, 
   SlidersHorizontal,
-  ChevronDown
+  ChevronDown,
+  Users
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -248,51 +249,58 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6">
         
         {/* Banner Hero */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-5 sm:p-8 mb-6 overflow-hidden shadow-xl border border-emerald-800">
-          <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="relative rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-4 sm:p-6 mb-5 overflow-hidden shadow-lg border border-emerald-800">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 right-1/4 w-60 h-60 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
-          <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold mb-3">
-              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+          <div className="relative z-10">
+            
+            {/* Tag Badge */}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[11px] font-bold mb-2">
+              <Sparkles className="w-3 h-3 shrink-0" />
               <span>走遍台灣 368 鄉鎮市區 • 記錄每一步的感動</span>
             </div>
             
-            <h2 className="text-2xl sm:text-4xl font-black font-serif-tw tracking-wide leading-tight text-white">
-              <span className="inline-block">【愛台灣 368 行腳】</span>
-              <span className="inline-block text-amber-300 ml-1">踏破手帳</span>
+            {/* Single Line Hero Title on Mobile */}
+            <h2 className="text-base sm:text-2xl md:text-3xl font-black font-serif-tw tracking-wide text-white flex items-center flex-wrap gap-1 leading-normal">
+              <span>【愛台灣 368 行腳】</span>
+              <span className="text-amber-300">踏破手帳</span>
             </h2>
-            <p className="text-xs sm:text-base text-emerald-100/90 mt-2.5 leading-relaxed">
+            
+            <p className="text-xs sm:text-sm text-emerald-100/90 mt-1.5 leading-relaxed max-w-2xl">
               點亮您踏過的每一個鄉鎮，品嚐在地名吃、探索名勝古蹟，上傳照片記錄美好時光，並一鍵生成專屬紀念拍立得！
             </p>
 
-            {/* Quick Action Badges */}
-            <div className="flex flex-wrap gap-2 sm:gap-2.5 mt-5">
+            {/* Compact 3-Column Action Buttons in 1 Row */}
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 mt-3.5 pt-1">
+              
               <button
                 onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
-                className="px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                className="py-2 px-1.5 sm:px-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-[11px] sm:text-xs font-black rounded-xl shadow-sm transition-all flex items-center justify-center gap-1 text-center"
               >
-                <Compass className="w-4 h-4" />
-                <span>{viewMode === 'map' ? '切換圖鑑清單' : '開啟全台點亮地圖'}</span>
+                <Compass className="w-3.5 h-3.5 shrink-0 hidden xs:inline" />
+                <span className="truncate">{viewMode === 'map' ? '圖鑑清單' : '全台點亮地圖'}</span>
               </button>
 
               <button
                 onClick={() => setIsLeaderboardOpen(true)}
-                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                className="py-2 px-1.5 sm:px-3 bg-white/15 hover:bg-white/25 text-white border border-white/20 text-[11px] sm:text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 text-center"
               >
-                <Trophy className="w-4 h-4 text-amber-400" />
-                <span>查看同好排行榜</span>
+                <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0 hidden xs:inline" />
+                <span className="truncate">同好排行榜</span>
               </button>
 
               <button
                 onClick={() => setIsCommunityOpen(true)}
-                className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-100 border border-emerald-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                className="py-2 px-1.5 sm:px-3 bg-emerald-700/90 hover:bg-emerald-600 text-emerald-100 border border-emerald-500/40 text-[11px] sm:text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1 text-center"
               >
-                <span>加入 LINE / FB 交流社群</span>
+                <Users className="w-3.5 h-3.5 text-emerald-300 shrink-0 hidden xs:inline" />
+                <span className="truncate">加入LINE/FB社群</span>
               </button>
+
             </div>
           </div>
         </div>
@@ -309,7 +317,7 @@ export default function App() {
         )}
 
         {/* Filter and Search Toolbar */}
-        <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-3.5 sm:p-4 mb-6 space-y-3">
+        <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-3.5 sm:p-4 mb-5 space-y-3">
           
           {/* Region Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
