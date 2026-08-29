@@ -25,6 +25,9 @@ import LeaderboardModal from './components/LeaderboardModal';
 import CloudSyncModal from './components/CloudSyncModal';
 import CommunityBanner from './components/CommunityBanner';
 
+// Directly import raw 368 data for instant loading and 100% path safety on GitHub Pages & offline
+import rawDistrictsData from '../public/data/taiwan368.json';
+
 import { 
   loadUserProgress, 
   saveUserProgress, 
@@ -33,8 +36,8 @@ import {
 } from './services/storage';
 
 export default function App() {
-  const [districts, setDistricts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [districts, setDistricts] = useState(rawDistrictsData || []);
+  const [isLoading, setIsLoading] = useState(false);
   const [progressMap, setProgressMap] = useState({});
   const [userProfile, setUserProfile] = useState(loadUserProfile());
 
@@ -52,23 +55,17 @@ export default function App() {
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
 
-  // Load 368 districts data & user progress on mount
+  // Load user progress on mount
   useEffect(() => {
-    async function initData() {
+    async function initUserProgress() {
       try {
-        const res = await fetch('/data/taiwan368.json');
-        const data = await res.json();
-        setDistricts(data);
-
         const savedProgress = await loadUserProgress();
         setProgressMap(savedProgress || {});
       } catch (err) {
-        console.error('Failed to load districts data:', err);
-      } finally {
-        setIsLoading(false);
+        console.error('Failed to load user progress:', err);
       }
     }
-    initData();
+    initUserProgress();
   }, []);
 
   // Compute live statistics
