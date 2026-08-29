@@ -248,31 +248,32 @@ export default function App() {
       />
 
       {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         
         {/* Banner Hero */}
-        <div className="relative rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-6 sm:p-8 mb-6 overflow-hidden shadow-xl border border-emerald-800">
+        <div className="relative rounded-3xl bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white p-5 sm:p-8 mb-6 overflow-hidden shadow-xl border border-emerald-800">
           <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
           <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-xs font-bold mb-3">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
               <span>走遍台灣 368 鄉鎮市區 • 記錄每一步的感動</span>
             </div>
             
             <h2 className="text-2xl sm:text-4xl font-black font-serif-tw tracking-wide leading-tight text-white">
-              【愛台灣 368 行腳】踏破手帳
+              <span className="inline-block">【愛台灣 368 行腳】</span>
+              <span className="inline-block text-amber-300 ml-1">踏破手帳</span>
             </h2>
-            <p className="text-sm sm:text-base text-emerald-100/90 mt-2 leading-relaxed">
+            <p className="text-xs sm:text-base text-emerald-100/90 mt-2.5 leading-relaxed">
               點亮您踏過的每一個鄉鎮，品嚐在地名吃、探索名勝古蹟，上傳照片記錄美好時光，並一鍵生成專屬紀念拍立得！
             </p>
 
             {/* Quick Action Badges */}
-            <div className="flex flex-wrap gap-2.5 mt-5">
+            <div className="flex flex-wrap gap-2 sm:gap-2.5 mt-5">
               <button
                 onClick={() => setViewMode(viewMode === 'map' ? 'list' : 'map')}
-                className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                className="px-3.5 py-2 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
               >
                 <Compass className="w-4 h-4" />
                 <span>{viewMode === 'map' ? '切換圖鑑清單' : '開啟全台點亮地圖'}</span>
@@ -280,7 +281,7 @@ export default function App() {
 
               <button
                 onClick={() => setIsLeaderboardOpen(true)}
-                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
               >
                 <Trophy className="w-4 h-4 text-amber-400" />
                 <span>查看同好排行榜</span>
@@ -288,7 +289,7 @@ export default function App() {
 
               <button
                 onClick={() => setIsCommunityOpen(true)}
-                className="px-4 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-100 border border-emerald-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
+                className="px-3.5 py-2 bg-emerald-700/80 hover:bg-emerald-600 text-emerald-100 border border-emerald-500/40 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5"
               >
                 <span>加入 LINE / FB 交流社群</span>
               </button>
@@ -308,7 +309,7 @@ export default function App() {
         )}
 
         {/* Filter and Search Toolbar */}
-        <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-4 mb-6 space-y-3">
+        <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-3.5 sm:p-4 mb-6 space-y-3">
           
           {/* Region Tabs */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">

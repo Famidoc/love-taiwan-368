@@ -24,20 +24,27 @@ export default function Header({
 }) {
   return (
     <header className="sticky top-0 z-30 bg-emerald-900 text-white shadow-lg backdrop-blur-md bg-opacity-95 border-b border-emerald-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 sm:h-20">
           
           {/* Logo and App Title */}
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-emerald-400 p-0.5 shadow-md flex items-center justify-center">
-              <div className="w-full h-full bg-emerald-950 rounded-2xl flex items-center justify-center text-xl sm:text-2xl">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-emerald-400 p-0.5 shadow-md flex items-center justify-center shrink-0">
+              <div className="w-full h-full bg-emerald-950 rounded-2xl flex items-center justify-center text-lg sm:text-2xl">
                 🇹🇼
               </div>
             </div>
+
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="text-lg sm:text-2xl font-black tracking-wider text-amber-300 font-serif-tw">
-                  愛台灣 368 行腳
+                {/* Mobile: Clean 2-line break (愛台灣 / 368 行腳) | Desktop: Single Line */}
+                <h1 className="font-black font-serif-tw tracking-wider text-amber-300">
+                  <span className="sm:hidden text-xs text-amber-200/90 block leading-tight font-sans font-bold">
+                    愛台灣
+                  </span>
+                  <span className="text-base sm:text-2xl whitespace-nowrap block sm:inline leading-tight">
+                    <span className="hidden sm:inline">愛台灣 </span>368 行腳
+                  </span>
                 </h1>
                 <span className="hidden sm:inline-block px-2 py-0.5 text-xs font-bold bg-emerald-700/80 text-emerald-100 rounded-full border border-emerald-600">
                   PWA 踏破手帳
@@ -49,7 +56,7 @@ export default function Header({
             </div>
           </div>
 
-          {/* Quick Stats Bar */}
+          {/* Quick Stats Bar (Desktop) */}
           <div className="hidden md:flex items-center space-x-4 bg-emerald-950/60 py-1.5 px-4 rounded-xl border border-emerald-700/40">
             <div className="text-center">
               <div className="text-xs text-emerald-300 flex items-center justify-center gap-1">
@@ -91,10 +98,10 @@ export default function Header({
           </div>
 
           {/* Navigation Action Buttons */}
-          <div className="flex items-center space-x-1.5 sm:space-x-2">
+          <div className="flex items-center space-x-1 sm:space-x-2">
             
             {/* View Mode Toggle: Map vs List */}
-            <div className="bg-emerald-950/80 p-1 rounded-xl flex items-center border border-emerald-700/50">
+            <div className="bg-emerald-950/80 p-0.5 sm:p-1 rounded-xl flex items-center border border-emerald-700/50">
               <button
                 onClick={() => setViewMode('list')}
                 className={`p-1.5 sm:px-2.5 sm:py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
@@ -102,7 +109,7 @@ export default function Header({
                     ? 'bg-amber-400 text-emerald-950 shadow-sm font-bold'
                     : 'text-emerald-200 hover:text-white'
                 }`}
-                title="清單檢視"
+                title="圖鑑清單"
               >
                 <List className="w-4 h-4" />
                 <span className="hidden sm:inline">圖鑑</span>
@@ -124,7 +131,7 @@ export default function Header({
             {/* Leaderboard Button */}
             <button
               onClick={onOpenLeaderboard}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all"
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all"
               title="同好排行榜"
             >
               <Trophy className="w-4 h-4 text-amber-400" />
@@ -134,8 +141,8 @@ export default function Header({
             {/* Google Drive / Cloud Sync */}
             <button
               onClick={onOpenSync}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/60 text-xs font-semibold flex items-center gap-1.5 transition-all"
-              title="雲端同步與備份"
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/60 text-xs font-semibold flex items-center gap-1.5 transition-all"
+              title="資料備份與同步"
             >
               <Cloud className="w-4 h-4 text-emerald-300" />
               <span className="hidden sm:inline">同步</span>
@@ -144,7 +151,7 @@ export default function Header({
             {/* Community / FB & LINE */}
             <button
               onClick={onOpenCommunity}
-              className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/60 text-xs font-semibold flex items-center gap-1.5 transition-all"
+              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/60 text-xs font-semibold flex items-center gap-1.5 transition-all"
               title="社群交流"
             >
               <Users className="w-4 h-4 text-emerald-300" />
