@@ -10,7 +10,8 @@ import {
   Users, 
   CheckCircle2, 
   Utensils, 
-  Camera 
+  Camera,
+  RefreshCw
 } from 'lucide-react';
 
 export default function Header({
@@ -20,7 +21,8 @@ export default function Header({
   onOpenLeaderboard,
   onOpenSync,
   onOpenCommunity,
-  userProfile
+  userProfile,
+  cloudSyncState
 }) {
   return (
     <header className="sticky top-0 z-30 bg-emerald-900 text-white shadow-lg backdrop-blur-md bg-opacity-95 border-b border-emerald-800">
@@ -138,14 +140,26 @@ export default function Header({
               <span className="hidden sm:inline">排行榜</span>
             </button>
 
-            {/* Google Drive / Cloud Sync */}
+            {/* Google Drive / Cloud Sync with Live Status Indicator */}
             <button
               onClick={onOpenSync}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/60 text-xs font-semibold flex items-center gap-1.5 transition-all"
-              title="資料備份與同步"
+              className={`p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                cloudSyncState === 'syncing'
+                  ? 'bg-sky-700/80 text-sky-100 border-sky-400/60 animate-pulse'
+                  : cloudSyncState === 'synced'
+                  ? 'bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border-emerald-400/60'
+                  : 'bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border-emerald-600/60'
+              }`}
+              title="資料備份與自動同步"
             >
-              <Cloud className="w-4 h-4 text-emerald-300" />
-              <span className="hidden sm:inline">同步</span>
+              {cloudSyncState === 'syncing' ? (
+                <RefreshCw className="w-4 h-4 text-sky-300 animate-spin" />
+              ) : (
+                <Cloud className="w-4 h-4 text-emerald-300" />
+              )}
+              <span className="hidden sm:inline">
+                {cloudSyncState === 'syncing' ? '同步中' : cloudSyncState === 'synced' ? '已同步' : '同步'}
+              </span>
             </button>
 
             {/* Community / FB & LINE */}

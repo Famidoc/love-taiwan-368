@@ -12,6 +12,8 @@ class GDriveSyncService {
     this.tokenClient = null;
     this.accessToken = null;
     this.userEmail = null;
+    this.isAutoSyncing = false;
+    this.syncDebounceTimer = null;
   }
 
   init(clientId, onTokenReceived) {
@@ -38,6 +40,8 @@ class GDriveSyncService {
             });
             const userInfo = await userInfoRes.json();
             this.userEmail = userInfo.email;
+            localStorage.setItem('taiwan368_google_email', userInfo.email);
+            localStorage.setItem('taiwan368_has_logged_in', 'true');
           } catch (e) {
             console.error('Failed to get user info:', e);
           }
@@ -56,10 +60,14 @@ class GDriveSyncService {
 
   requestLogin() {
     if (this.tokenClient) {
-      this.tokenClient.requestAccessToken({ prompt: 'consent' });
+      this.tokenClient.requestAccessToken({ prompt: '' });
     } else {
       throw new Error('Google 登入服務尚未初始化');
     }
+  }
+
+  hasToken() {
+    return Boolean(this.accessToken);
   }
 
   /**
@@ -183,12 +191,14 @@ class GDriveSyncService {
     }
   }
 
+  /**
+   * Download and return backup JSON from Google Drive
+   */
   async fetchBackupFromDrive() {
     if (!this.accessToken) {
       throw new Error('尚未取得 Google 授權，請先登入 Google 帳號');
     }
 
-    // Search for backup file anywhere in user's Drive
     const searchRes = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=name='${BACKUP_FILE_NAME}' and trashed=false&orderBy=modifiedTime desc`,
       {
@@ -214,6 +224,30 @@ class GDriveSyncService {
     }
 
     return await downloadRes.json();
+  }
+
+  /**
+   * Schedule debounced auto-sync to Google Drive in background
+   */
+  scheduleAutoBackup(backupData, onSyncStateChange) {
+    if (!this.accessToken) return;
+
+    if (this.syncDebounceTimer) {
+      clearTimeout(this.syncDebounceTimer);
+    }
+
+    if (onSyncStateChange) onSyncStateChange('syncing');
+
+    this.syncDebounceTimer = setTimeout(async () => {
+      try {
+        await this.uploadBackupToDrive(backupData);
+        console.log('⚡ [AutoSync] Background cloud sync succeeded!');
+        if (onSyncStateChange) onSyncStateChange('synced');
+      } catch (err) {
+        console.warn('⚠️ [AutoSync] Background sync failed:', err);
+        if (onSyncStateChange) onSyncStateChange('error');
+      }
+    }, 2000); // 2-second debounce for seamless non-blocking background write
   }
 }
 

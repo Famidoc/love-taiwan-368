@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Search, 
   Filter, 
@@ -36,11 +36,14 @@ import {
   saveUserProfile 
 } from './services/storage';
 
+import { gdriveService, DEFAULT_GOOGLE_CLIENT_ID } from './services/gdrive';
+
 export default function App() {
   const [districts, setDistricts] = useState(rawDistrictsData || []);
   const [isLoading, setIsLoading] = useState(false);
   const [progressMap, setProgressMap] = useState({});
   const [userProfile, setUserProfile] = useState(loadUserProfile());
+  const [cloudSyncState, setCloudSyncState] = useState('idle'); // 'idle' | 'syncing' | 'synced' | 'error'
 
   // UI Views & Modals
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'map'
@@ -56,17 +59,75 @@ export default function App() {
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
 
-  // Load user progress on mount
+  // Auto Background Push Helper
+  const triggerAutoCloudBackup = useCallback((currentProgress, currentProfile) => {
+    if (!gdriveService.hasToken()) return;
+    const backupObj = {
+      appName: '愛台灣368行腳',
+      version: '1.0',
+      backupDate: new Date().toISOString(),
+      profile: currentProfile || userProfile,
+      progress: currentProgress || progressMap
+    };
+    gdriveService.scheduleAutoBackup(backupObj, setCloudSyncState);
+  }, [userProfile, progressMap]);
+
+  // Load user progress on mount and initialize Auto-Sync
   useEffect(() => {
-    async function initUserProgress() {
+    async function initApp() {
       try {
         const savedProgress = await loadUserProgress();
         setProgressMap(savedProgress || {});
+
+        // Init Google Drive Auto Sync if user has previously authorized
+        const activeClientId = localStorage.getItem('taiwan368_google_client_id') || DEFAULT_GOOGLE_CLIENT_ID;
+        const hasLoggedIn = localStorage.getItem('taiwan368_has_logged_in') === 'true';
+
+        gdriveService.init(activeClientId, async ({ token, email }) => {
+          setCloudSyncState('syncing');
+          try {
+            // Check and pull cloud backup on launch
+            const cloudData = await gdriveService.fetchBackupFromDrive();
+            if (cloudData && cloudData.progress) {
+              const cloudTimestamp = new Date(cloudData.backupDate || 0).getTime();
+              
+              // Find latest local timestamp
+              let localLatestTime = 0;
+              Object.values(savedProgress || {}).forEach(p => {
+                const t = new Date(p?.updatedAt || 0).getTime();
+                if (t > localLatestTime) localLatestTime = t;
+              });
+
+              if (cloudTimestamp >= localLatestTime) {
+                console.log('⚡ [AutoSync] Loaded newer progress from Google Drive!');
+                setProgressMap(cloudData.progress);
+                await saveUserProgress(cloudData.progress);
+                if (cloudData.profile) {
+                  setUserProfile(cloudData.profile);
+                  saveUserProfile(cloudData.profile);
+                }
+              }
+            }
+            setCloudSyncState('synced');
+          } catch (e) {
+            console.log('[AutoSync] Cloud pull check completed:', e.message);
+            setCloudSyncState('synced');
+          }
+        });
+
+        // Trigger silent token request if previously logged in
+        if (hasLoggedIn) {
+          try {
+            gdriveService.requestLogin();
+          } catch (e) {
+            console.log('[AutoSync] Silent login waiting for user gesture');
+          }
+        }
       } catch (err) {
         console.error('Failed to load user progress:', err);
       }
     }
-    initUserProgress();
+    initApp();
   }, []);
 
   // Compute live statistics
@@ -155,6 +216,7 @@ export default function App() {
 
     setProgressMap(nextProgress);
     saveUserProgress(nextProgress);
+    triggerAutoCloudBackup(nextProgress, userProfile);
   };
 
   // Handle Save from Checkin Modal
@@ -165,12 +227,14 @@ export default function App() {
     };
     setProgressMap(nextProgress);
     saveUserProgress(nextProgress);
+    triggerAutoCloudBackup(nextProgress, userProfile);
   };
 
   // Handle Profile Update
   const handleUpdateProfile = (newProfile) => {
     setUserProfile(newProfile);
     saveUserProfile(newProfile);
+    triggerAutoCloudBackup(progressMap, newProfile);
   };
 
   // Handle Restore
@@ -183,11 +247,13 @@ export default function App() {
       setUserProfile(restoredProfile);
       saveUserProfile(restoredProfile);
     }
+    setCloudSyncState('synced');
   };
 
   // Handle Reset All Progress to 0
   const handleProgressReset = () => {
     setProgressMap({});
+    triggerAutoCloudBackup({}, userProfile);
   };
 
   // Filtered districts list
@@ -246,6 +312,7 @@ export default function App() {
         onOpenSync={() => setIsSyncOpen(true)}
         onOpenCommunity={() => setIsCommunityOpen(true)}
         userProfile={userProfile}
+        cloudSyncState={cloudSyncState}
       />
 
       {/* Main Container */}
