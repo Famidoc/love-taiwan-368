@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { X, Download, Share2, Copy, Check, Sparkles, Camera, AlertCircle } from 'lucide-react';
+import { X, Download, Share2, Copy, Check, Sparkles, Camera, AlertCircle, LayoutGrid, Image as ImageIcon } from 'lucide-react';
 
 /**
  * Universal compatible rounded rectangle drawer for HTML5 Canvas
@@ -14,6 +14,36 @@ function drawRoundRectPath(ctx, x, y, w, h, r) {
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
+}
+
+/**
+ * Helper to draw image with aspect ratio fit/cover
+ */
+function drawImageCover(ctx, img, dx, dy, dw, dh, radius = 0) {
+  ctx.save();
+  if (radius > 0) {
+    drawRoundRectPath(ctx, dx, dy, dw, dh, radius);
+    ctx.clip();
+  }
+
+  const imgRatio = img.width / img.height;
+  const targetRatio = dw / dh;
+  let sx, sy, sWidth, sHeight;
+
+  if (imgRatio > targetRatio) {
+    sHeight = img.height;
+    sWidth = img.height * targetRatio;
+    sx = (img.width - sWidth) / 2;
+    sy = 0;
+  } else {
+    sWidth = img.width;
+    sHeight = img.width / targetRatio;
+    sx = 0;
+    sy = (img.height - sHeight) / 2;
+  }
+
+  ctx.drawImage(img, sx, sy, sWidth, sHeight, dx, dy, dw, dh);
+  ctx.restore();
 }
 
 export default function ShareCardModal({
@@ -32,25 +62,40 @@ export default function ShareCardModal({
   const [hasError, setHasError] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Photo mode: 0, 1, 2 (index of single photo) or 'collage' (all photos stitched)
+  const photos = progress?.photos || [];
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0); // 0 | 1 | 2 | 'collage'
+
   const attractionsChecked = progress?.attractionsChecked || [];
   const foodsChecked = progress?.foodsChecked || [];
   const totalChecked = attractionsChecked.length + foodsChecked.length;
   const visitDate = progress?.completedDate || new Date().toISOString().split('T')[0];
-  const photo = progress?.photos && progress.photos[0] ? progress.photos[0].dataUrl : null;
   const rating = progress?.rating || 5;
   const notes = progress?.notes || '';
 
   useEffect(() => {
     setIsGenerating(true);
     setHasError(false);
-    // Short delay to ensure canvas DOM element is ready
     const timer = setTimeout(() => {
       generateCard();
     }, 50);
     return () => clearTimeout(timer);
-  }, [district, progress, stats, userProfile]);
+  }, [district, progress, stats, userProfile, selectedPhotoIndex]);
 
-  const generateCard = () => {
+  const loadAllImages = async (urls) => {
+    const promises = urls.map(url => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = url;
+      });
+    });
+    return Promise.all(promises);
+  };
+
+  const generateCard = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -64,7 +109,7 @@ export default function ShareCardModal({
       canvas.width = W;
       canvas.height = H;
 
-      // Background Gradient: Classic Kraft Paper / Natural Warm Slate
+      // Background Gradient
       const bgGradient = ctx.createLinearGradient(0, 0, W, H);
       bgGradient.addColorStop(0, '#fafaf9');
       bgGradient.addColorStop(0.5, '#f5f5f4');
@@ -97,7 +142,7 @@ export default function ShareCardModal({
       const photoFrameW = W - 160;
       const photoFrameH = 680;
 
-      // White photo card shadow
+      // White photo card frame
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(photoFrameX, photoFrameY, photoFrameW, photoFrameH);
 
@@ -107,50 +152,50 @@ export default function ShareCardModal({
       const photoInnerW = photoFrameW - 48;
       const photoInnerH = photoFrameH - 120;
 
-      if (photo) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          try {
-            ctx.save();
-            drawRoundRectPath(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
-            ctx.clip();
+      // Render Photo(s)
+      if (photos.length > 0) {
+        if (selectedPhotoIndex === 'collage' && photos.length > 1) {
+          // COLLAGE MODE (2 or 3 photos)
+          const loadedImages = await loadAllImages(photos.map(p => p.dataUrl));
+          const validImgs = loadedImages.filter(Boolean);
 
-            const imgRatio = img.width / img.height;
-            const targetRatio = photoInnerW / photoInnerH;
-            let sx, sy, sWidth, sHeight;
+          if (validImgs.length === 2) {
+            // 2 Photos: Side-by-side Split
+            const gap = 12;
+            const singleW = (photoInnerW - gap) / 2;
+            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, singleW, photoInnerH, 8);
+            drawImageCover(ctx, validImgs[1], photoInnerX + singleW + gap, photoInnerY, singleW, photoInnerH, 8);
+          } else if (validImgs.length >= 3) {
+            // 3 Photos: 1 Main Left + 2 Stacked Right
+            const gap = 12;
+            const leftW = (photoInnerW - gap) * 0.58;
+            const rightW = photoInnerW - gap - leftW;
+            const rightH = (photoInnerH - gap) / 2;
 
-            if (imgRatio > targetRatio) {
-              sHeight = img.height;
-              sWidth = img.height * targetRatio;
-              sx = (img.width - sWidth) / 2;
-              sy = 0;
-            } else {
-              sWidth = img.width;
-              sHeight = img.width / targetRatio;
-              sx = 0;
-              sy = (img.height - sHeight) / 2;
-            }
-
-            ctx.drawImage(img, sx, sy, sWidth, sHeight, photoInnerX, photoInnerY, photoInnerW, photoInnerH);
-            ctx.restore();
-
-            finishCard(ctx, canvas, W, H, photoFrameX, photoFrameY, photoFrameW, photoFrameH);
-          } catch (e) {
-            console.error('Error drawing image on canvas:', e);
-            drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
-            finishCard(ctx, canvas, W, H, photoFrameX, photoFrameY, photoFrameW, photoFrameH);
+            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, leftW, photoInnerH, 8);
+            drawImageCover(ctx, validImgs[1], photoInnerX + leftW + gap, photoInnerY, rightW, rightH, 8);
+            drawImageCover(ctx, validImgs[2], photoInnerX + leftW + gap, photoInnerY + rightH + gap, rightW, rightH, 8);
+          } else {
+            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
           }
-        };
-        img.onerror = () => {
-          drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
-          finishCard(ctx, canvas, W, H, photoFrameX, photoFrameY, photoFrameW, photoFrameH);
-        };
-        img.src = photo;
+        } else {
+          // SINGLE PHOTO MODE
+          const photoIdx = typeof selectedPhotoIndex === 'number' ? selectedPhotoIndex : 0;
+          const targetPhotoUrl = photos[photoIdx]?.dataUrl || photos[0].dataUrl;
+          const loadedImages = await loadAllImages([targetPhotoUrl]);
+          if (loadedImages[0]) {
+            drawImageCover(ctx, loadedImages[0], photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
+          } else {
+            drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
+          }
+        }
       } else {
         drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
-        finishCard(ctx, canvas, W, H, photoFrameX, photoFrameY, photoFrameW, photoFrameH);
       }
+
+      // Finish rest of card elements
+      finishCard(ctx, canvas, W, H, photoFrameX, photoFrameY, photoFrameW, photoFrameH);
+
     } catch (err) {
       console.error('Card generation failed:', err);
       setIsGenerating(false);
@@ -360,7 +405,7 @@ export default function ShareCardModal({
         <div className="p-3.5 sm:p-4 bg-slate-900 text-white flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-sm sm:text-base">成就拍立得卡片已生成！</h3>
+            <h3 className="font-bold text-sm sm:text-base">成就拍立得卡片</h3>
           </div>
           <button
             onClick={onClose}
@@ -369,6 +414,44 @@ export default function ShareCardModal({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* Multi-Photo Selector Toolbar (when user has multiple photos) */}
+        {photos.length > 1 && (
+          <div className="px-4 py-2 bg-slate-200/80 border-b border-slate-300 flex items-center justify-between gap-2 text-xs">
+            <span className="font-bold text-slate-700 whitespace-nowrap">
+              選擇封面版型：
+            </span>
+            <div className="flex items-center gap-1.5 overflow-x-auto">
+              {photos.map((p, idx) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPhotoIndex(idx)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                    selectedPhotoIndex === idx
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                  }`}
+                >
+                  <ImageIcon className="w-3 h-3" />
+                  <span>照片 {idx + 1}</span>
+                </button>
+              ))}
+
+              {/* Collage Button */}
+              <button
+                onClick={() => setSelectedPhotoIndex('collage')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                  selectedPhotoIndex === 'collage'
+                    ? 'bg-amber-500 text-emerald-950 shadow-xs'
+                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                }`}
+              >
+                <LayoutGrid className="w-3 h-3" />
+                <span>多圖拼貼 ({photos.length}張)</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Card Preview */}
         <div className="p-3 sm:p-4 bg-slate-100 flex flex-col items-center justify-center min-h-[300px]">
