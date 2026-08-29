@@ -1,4 +1,4 @@
-import { get, set } from 'idb-keyval';
+import { get, set, del } from 'idb-keyval';
 
 const STORAGE_KEY_PROGRESS = 'taiwan368_user_progress';
 const STORAGE_KEY_PROFILE = 'taiwan368_user_profile';
@@ -69,6 +69,21 @@ export async function saveUserProgress(progressMap) {
     await set(STORAGE_KEY_PROGRESS, progressMap);
   } catch (err) {
     console.error('Error saving user progress to IndexedDB:', err);
+  }
+}
+
+/**
+ * Clear all progress and photos (Reset App Data)
+ */
+export async function clearAllUserProgress() {
+  try {
+    await del(STORAGE_KEY_PROGRESS);
+    localStorage.removeItem(STORAGE_KEY_PROGRESS);
+    return true;
+  } catch (err) {
+    console.error('Error clearing progress:', err);
+    localStorage.removeItem(STORAGE_KEY_PROGRESS);
+    return false;
   }
 }
 

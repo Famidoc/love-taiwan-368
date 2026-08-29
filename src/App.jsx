@@ -184,6 +184,11 @@ export default function App() {
     }
   };
 
+  // Handle Reset All Progress to 0
+  const handleProgressReset = () => {
+    setProgressMap({});
+  };
+
   // Filtered districts list
   const filteredDistricts = useMemo(() => {
     return districts.filter((d) => {
@@ -487,6 +492,7 @@ export default function App() {
         isOpen={isSyncOpen}
         onClose={() => setIsSyncOpen(false)}
         onProgressRestored={handleProgressRestored}
+        onProgressReset={handleProgressReset}
         onUpdateProfile={handleUpdateProfile}
       />
 

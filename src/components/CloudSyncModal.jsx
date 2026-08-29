@@ -10,9 +10,11 @@ import {
   Key, 
   RefreshCw,
   Sparkles,
-  FileJson
+  FileJson,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
-import { exportBackupFile, importBackupFile, loadUserProgress } from '../services/storage';
+import { exportBackupFile, importBackupFile, loadUserProgress, clearAllUserProgress } from '../services/storage';
 import { gdriveService } from '../services/gdrive';
 
 export default function CloudSyncModal({
@@ -20,6 +22,7 @@ export default function CloudSyncModal({
   isOpen,
   onClose,
   onProgressRestored,
+  onProgressReset,
   onUpdateProfile
 }) {
   if (!isOpen) return null;
@@ -30,6 +33,7 @@ export default function CloudSyncModal({
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState(null); // { type: 'success'|'error', message: string }
   const [googleUserEmail, setGoogleUserEmail] = useState(userProfile?.googleEmail || '');
+  const [showConfirmReset, setShowConfirmReset] = useState(false);
 
   const handleExportJson = async () => {
     try {
@@ -106,6 +110,15 @@ export default function CloudSyncModal({
     }
   };
 
+  const handleExecuteReset = async () => {
+    await clearAllUserProgress();
+    if (onProgressReset) {
+      onProgressReset();
+    }
+    setShowConfirmReset(false);
+    setSyncStatus({ type: 'success', message: '✨ 已成功歸零！所有測試打卡紀錄、照片與筆記已全部清空。' });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
       <div className="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden my-6 border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
@@ -122,11 +135,11 @@ export default function CloudSyncModal({
           <div className="flex items-center gap-2">
             <Cloud className="w-6 h-6 text-emerald-300" />
             <h2 className="text-xl font-black font-serif-tw tracking-wide">
-              資料同步與雲端備份
+              資料同步與備份設定
             </h2>
           </div>
           <p className="text-xs text-emerald-200 mt-1">
-            雙軌備份機制：私有 Google Drive 雲端同步 + 本地 JSON 檔案備份
+            管理您的打卡記錄、雲端備份與重置手帳
           </p>
         </div>
 
@@ -153,10 +166,10 @@ export default function CloudSyncModal({
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <div className="flex items-center gap-2 text-slate-800 font-bold text-sm">
               <FileJson className="w-4 h-4 text-amber-600" />
-              <span>快速本機檔案備份 (免登入、100% 離線)</span>
+              <span>本機檔案備份 (免登入、100% 離線)</span>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              可直接將您的打卡資料、評分與壓縮佐證照片匯出為單一備份檔案。換新手機或換電腦時，點選「匯入還原」即可一秒恢復！
+              將打卡資料、評分與壓縮照片匯出為單一備份檔案，換手機時可直接匯入還原。
             </p>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
@@ -196,7 +209,7 @@ export default function CloudSyncModal({
             </div>
 
             <p className="text-xs text-slate-500 leading-relaxed">
-              將備份檔案儲存於您個人的 Google 雲端硬碟（愛台灣368專屬資料夾），不佔用伺服器空間，跨裝置一鍵同步。
+              將備份檔案儲存於您個人的 Google 雲端硬碟（愛台灣368專屬資料夾），跨裝置一鍵同步。
             </p>
 
             {/* Google OAuth Client ID config */}
@@ -229,6 +242,50 @@ export default function CloudSyncModal({
               <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
               <span>{isSyncing ? 'Google 雲端同步中...' : '登入 Google 並立即備份到雲端硬碟'}</span>
             </button>
+          </div>
+
+          {/* Section 3: Reset / Clear All (Danger Zone) */}
+          <div className="bg-red-50/70 p-4 rounded-2xl border border-red-200 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-red-900 font-bold text-sm">
+                <Trash2 className="w-4 h-4 text-red-600" />
+                <span>重置手帳 (清空所有測試資料)</span>
+              </div>
+            </div>
+            <p className="text-xs text-red-700 leading-relaxed">
+              當您試用完畢、準備正式出發時，點擊此處可將所有打卡勾選、照片與筆記一鍵歸零，重回 0% 全新狀態。
+            </p>
+
+            {showConfirmReset ? (
+              <div className="bg-white p-3.5 rounded-xl border border-red-300 space-y-2.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-red-800">
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                  <span>確定要清空所有紀錄嗎？此動作將無法復原！</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleExecuteReset}
+                    className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg shadow-sm"
+                  >
+                    確定清空歸零
+                  </button>
+                  <button
+                    onClick={() => setShowConfirmReset(false)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowConfirmReset(true)}
+                className="w-full py-2 px-3 bg-white hover:bg-red-100/60 text-red-700 border border-red-300 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>一鍵清空所有打卡進度 (歸零重置)</span>
+              </button>
+            )}
           </div>
 
         </div>
