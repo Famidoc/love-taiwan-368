@@ -1,14 +1,17 @@
 {
   "short_name": "368行腳",
-  "name": "【愛台灣368行腳】足跡記錄",
+  "name": "【愛台灣368行腳】全台鄉鎮足跡手帳",
+  "description": "走遍台灣368個鄉鎮市區，記錄必訪景點與必吃美食，點亮全台足跡！",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "favicon.svg",
       "type": "image/svg+xml",
-      "sizes": "192x192 512x512"
+      "sizes": "192x192 512x512",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "background_color": "#064e3b",
   "theme_color": "#064e3b",
   "display": "standalone",
