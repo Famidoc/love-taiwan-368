@@ -62,9 +62,12 @@ export default function ShareCardModal({
   const [hasError, setHasError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Photo mode: 0..5 (index of single photo) or 'collage' (all photos stitched)
+  // Photo mode:
+  // - 0, 1, 2, 3, 4, 5: Single photo
+  // - 'collage_2', 'collage_3', 'collage_4', 'collage_6': Multi-photo collage
   const photos = progress?.photos || [];
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const defaultMode = photos.length >= 6 ? 'collage_6' : photos.length > 1 ? `collage_${photos.length}` : 0;
+  const [selectedLayout, setSelectedLayout] = useState(defaultMode);
 
   const attractionsChecked = progress?.attractionsChecked || [];
   const foodsChecked = progress?.foodsChecked || [];
@@ -80,7 +83,7 @@ export default function ShareCardModal({
       generateCard();
     }, 50);
     return () => clearTimeout(timer);
-  }, [district, progress, stats, userProfile, selectedPhotoIndex]);
+  }, [district, progress, stats, userProfile, selectedLayout]);
 
   const loadAllImages = async (urls) => {
     const promises = urls.map(url => {
@@ -152,78 +155,55 @@ export default function ShareCardModal({
       const photoInnerW = photoFrameW - 48;
       const photoInnerH = photoFrameH - 120;
 
-      // Render Photo(s)
+      // Render Photo(s) based on selected layout
       if (photos.length > 0) {
-        if (selectedPhotoIndex === 'collage' && photos.length > 1) {
-          // COLLAGE MODE (Supports 2 to 6 photos!)
-          const loadedImages = await loadAllImages(photos.map(p => p.dataUrl));
-          const validImgs = loadedImages.filter(Boolean);
-          const count = validImgs.length;
-          const gap = 10;
+        const loadedImages = await loadAllImages(photos.map(p => p.dataUrl));
+        const validImgs = loadedImages.filter(Boolean);
+        const gap = 10;
 
-          if (count === 2) {
-            // 2 Photos: Side-by-side Split
-            const singleW = (photoInnerW - gap) / 2;
-            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, singleW, photoInnerH, 8);
-            drawImageCover(ctx, validImgs[1], photoInnerX + singleW + gap, photoInnerY, singleW, photoInnerH, 8);
-          } else if (count === 3) {
-            // 3 Photos: 1 Main Left + 2 Stacked Right
-            const leftW = (photoInnerW - gap) * 0.58;
-            const rightW = photoInnerW - gap - leftW;
-            const rightH = (photoInnerH - gap) / 2;
+        if (selectedLayout === 'collage_2' && validImgs.length >= 2) {
+          // 2-Photo Collage: Side-by-side Split
+          const singleW = (photoInnerW - gap) / 2;
+          drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, singleW, photoInnerH, 8);
+          drawImageCover(ctx, validImgs[1], photoInnerX + singleW + gap, photoInnerY, singleW, photoInnerH, 8);
+        } else if (selectedLayout === 'collage_3' && validImgs.length >= 3) {
+          // 3-Photo Collage: 1 Main Left + 2 Stacked Right
+          const leftW = (photoInnerW - gap) * 0.58;
+          const rightW = photoInnerW - gap - leftW;
+          const rightH = (photoInnerH - gap) / 2;
 
-            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, leftW, photoInnerH, 8);
-            drawImageCover(ctx, validImgs[1], photoInnerX + leftW + gap, photoInnerY, rightW, rightH, 8);
-            drawImageCover(ctx, validImgs[2], photoInnerX + leftW + gap, photoInnerY + rightH + gap, rightW, rightH, 8);
-          } else if (count === 4) {
-            // 4 Photos: 2x2 Grid
-            const itemW = (photoInnerW - gap) / 2;
-            const itemH = (photoInnerH - gap) / 2;
-            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, itemW, itemH, 8);
-            drawImageCover(ctx, validImgs[1], photoInnerX + itemW + gap, photoInnerY, itemW, itemH, 8);
-            drawImageCover(ctx, validImgs[2], photoInnerX, photoInnerY + itemH + gap, itemW, itemH, 8);
-            drawImageCover(ctx, validImgs[3], photoInnerX + itemW + gap, photoInnerY + itemH + gap, itemW, itemH, 8);
-          } else if (count === 5) {
-            // 5 Photos: 2 Top + 3 Bottom
-            const topW = (photoInnerW - gap) / 2;
-            const topH = (photoInnerH - gap) * 0.52;
-            const btmW = (photoInnerW - gap * 2) / 3;
-            const btmH = photoInnerH - gap - topH;
+          drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, leftW, photoInnerH, 8);
+          drawImageCover(ctx, validImgs[1], photoInnerX + leftW + gap, photoInnerY, rightW, rightH, 8);
+          drawImageCover(ctx, validImgs[2], photoInnerX + leftW + gap, photoInnerY + rightH + gap, rightW, rightH, 8);
+        } else if (selectedLayout === 'collage_4' && validImgs.length >= 4) {
+          // 4-Photo Collage: 2x2 Grid
+          const itemW = (photoInnerW - gap) / 2;
+          const itemH = (photoInnerH - gap) / 2;
+          drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, itemW, itemH, 8);
+          drawImageCover(ctx, validImgs[1], photoInnerX + itemW + gap, photoInnerY, itemW, itemH, 8);
+          drawImageCover(ctx, validImgs[2], photoInnerX, photoInnerY + itemH + gap, itemW, itemH, 8);
+          drawImageCover(ctx, validImgs[3], photoInnerX + itemW + gap, photoInnerY + itemH + gap, itemW, itemH, 8);
+        } else if (selectedLayout === 'collage_6' && validImgs.length >= 2) {
+          // 6-Photo Collage: 2 Rows x 3 Columns
+          const colW = (photoInnerW - gap * 2) / 3;
+          const rowH = (photoInnerH - gap) / 2;
 
-            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, topW, topH, 8);
-            drawImageCover(ctx, validImgs[1], photoInnerX + topW + gap, photoInnerY, topW, topH, 8);
-            drawImageCover(ctx, validImgs[2], photoInnerX, photoInnerY + topH + gap, btmW, btmH, 8);
-            drawImageCover(ctx, validImgs[3], photoInnerX + btmW + gap, photoInnerY + topH + gap, btmW, btmH, 8);
-            drawImageCover(ctx, validImgs[4], photoInnerX + (btmW + gap) * 2, photoInnerY + topH + gap, btmW, btmH, 8);
-          } else if (count >= 6) {
-            // 6 Photos: 2 Rows x 3 Columns (3 Attractions + 3 Foods!)
-            const colW = (photoInnerW - gap * 2) / 3;
-            const rowH = (photoInnerH - gap) / 2;
-
-            for (let r = 0; r < 2; r++) {
-              for (let c = 0; c < 3; c++) {
-                const idx = r * 3 + c;
-                if (validImgs[idx]) {
-                  const ix = photoInnerX + c * (colW + gap);
-                  const iy = photoInnerY + r * (rowH + gap);
-                  drawImageCover(ctx, validImgs[idx], ix, iy, colW, rowH, 8);
-                }
+          for (let r = 0; r < 2; r++) {
+            for (let c = 0; c < 3; c++) {
+              const idx = r * 3 + c;
+              if (validImgs[idx]) {
+                const ix = photoInnerX + c * (colW + gap);
+                const iy = photoInnerY + r * (rowH + gap);
+                drawImageCover(ctx, validImgs[idx], ix, iy, colW, rowH, 8);
               }
             }
-          } else {
-            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
           }
         } else {
-          // SINGLE PHOTO MODE
-          const photoIdx = typeof selectedPhotoIndex === 'number' ? selectedPhotoIndex : 0;
-          const targetPhotoUrl = photos[photoIdx]?.dataUrl || photos[0]?.dataUrl;
-          if (targetPhotoUrl) {
-            const loadedImages = await loadAllImages([targetPhotoUrl]);
-            if (loadedImages[0]) {
-              drawImageCover(ctx, loadedImages[0], photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
-            } else {
-              drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
-            }
+          // Single Photo Mode (or fallback to single)
+          const photoIdx = typeof selectedLayout === 'number' ? selectedLayout : 0;
+          const targetImg = validImgs[photoIdx] || validImgs[0];
+          if (targetImg) {
+            drawImageCover(ctx, targetImg, photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
           } else {
             drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
           }
@@ -263,16 +243,20 @@ export default function ShareCardModal({
 
   const finishCard = (ctx, canvas, W, H, photoFrameX, photoFrameY, photoFrameW, photoFrameH) => {
     try {
-      // Polaroid Bottom Caption
-      ctx.fillStyle = '#1c1917';
+      // 1. Polaroid Bottom Title: County & Township
+      const titleText = `${district.county} ${district.township}`;
       ctx.font = '900 44px "Noto Serif TC", serif';
+      ctx.fillStyle = '#1c1917';
       ctx.textAlign = 'left';
-      ctx.fillText(`${district.county} ${district.township}`, photoFrameX + 40, photoFrameY + photoFrameH - 45);
+      ctx.fillText(titleText, photoFrameX + 40, photoFrameY + photoFrameH - 45);
 
-      // Postal code tag
+      // Measure title width accurately with the same font
+      const titleWidth = ctx.measureText(titleText).width;
+
+      // 2. Postal code tag (clean separation, no overlap)
       ctx.fillStyle = '#78716c';
       ctx.font = 'bold 24px "Noto Sans TC", sans-serif';
-      ctx.fillText(`郵遞區號 ${district.postalCode}`, photoFrameX + 40 + ctx.measureText(`${district.county} ${district.township}`).width + 20, photoFrameY + photoFrameH - 45);
+      ctx.fillText(`郵遞區號 ${district.postalCode}`, photoFrameX + 40 + titleWidth + 24, photoFrameY + photoFrameH - 45);
 
       // Stars on the right of photo frame
       ctx.fillStyle = '#f59e0b';
@@ -454,19 +438,21 @@ export default function ShareCardModal({
           </button>
         </div>
 
-        {/* Multi-Photo Selector Toolbar (when user has multiple photos) */}
+        {/* Multi-Photo & Layout Selector Toolbar */}
         {photos.length > 1 && (
           <div className="px-3 py-2 bg-slate-200/90 border-b border-slate-300 flex items-center justify-between gap-1.5 text-xs overflow-x-auto">
             <span className="font-bold text-slate-700 shrink-0">
               版型：
             </span>
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              
+              {/* Single Photo Tabs */}
               {photos.map((p, idx) => (
                 <button
                   key={p.id}
-                  onClick={() => setSelectedPhotoIndex(idx)}
+                  onClick={() => setSelectedLayout(idx)}
                   className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
-                    selectedPhotoIndex === idx
+                    selectedLayout === idx
                       ? 'bg-emerald-700 text-white shadow-xs'
                       : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
                   }`}
@@ -476,18 +462,66 @@ export default function ShareCardModal({
                 </button>
               ))}
 
-              {/* Collage Button */}
-              <button
-                onClick={() => setSelectedPhotoIndex('collage')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 shrink-0 ${
-                  selectedPhotoIndex === 'collage'
-                    ? 'bg-amber-500 text-emerald-950 shadow-xs'
-                    : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
-                }`}
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>{photos.length}圖拼貼</span>
-              </button>
+              {/* 2-Photo Collage Tab */}
+              {photos.length >= 2 && (
+                <button
+                  onClick={() => setSelectedLayout('collage_2')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                    selectedLayout === 'collage_2'
+                      ? 'bg-amber-500 text-emerald-950 font-black shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                  }`}
+                >
+                  <LayoutGrid className="w-3 h-3" />
+                  <span>2圖雙拼</span>
+                </button>
+              )}
+
+              {/* 3-Photo Collage Tab */}
+              {photos.length >= 3 && (
+                <button
+                  onClick={() => setSelectedLayout('collage_3')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                    selectedLayout === 'collage_3'
+                      ? 'bg-amber-500 text-emerald-950 font-black shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                  }`}
+                >
+                  <LayoutGrid className="w-3 h-3" />
+                  <span>3圖雜誌風</span>
+                </button>
+              )}
+
+              {/* 4-Photo Collage Tab */}
+              {photos.length >= 4 && (
+                <button
+                  onClick={() => setSelectedLayout('collage_4')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                    selectedLayout === 'collage_4'
+                      ? 'bg-amber-500 text-emerald-950 font-black shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                  }`}
+                >
+                  <LayoutGrid className="w-3 h-3" />
+                  <span>4宮格</span>
+                </button>
+              )}
+
+              {/* 6-Photo Collage Tab */}
+              {photos.length >= 6 && (
+                <button
+                  onClick={() => setSelectedLayout('collage_6')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                    selectedLayout === 'collage_6'
+                      ? 'bg-amber-500 text-emerald-950 font-black shadow-xs'
+                      : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
+                  }`}
+                >
+                  <LayoutGrid className="w-3 h-3" />
+                  <span>6宮格全制霸</span>
+                </button>
+              )}
+
             </div>
           </div>
         )}
