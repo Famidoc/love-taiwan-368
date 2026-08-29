@@ -3,6 +3,7 @@
  * Allows users to backup and restore their 368 footprint to their personal Google Drive folder
  */
 
+const FOLDER_NAME = '愛台灣368行腳';
 const BACKUP_FILE_NAME = 'taiwan368_backup.json';
 export const DEFAULT_GOOGLE_CLIENT_ID = '948492589681-blall4lcdb0485ckr488274935ji7joa.apps.googleusercontent.com';
 
@@ -61,36 +62,115 @@ class GDriveSyncService {
     }
   }
 
+  /**
+   * Find or create the dedicated '愛台灣368行腳' folder in user's Drive
+   */
+  async getOrCreateAppFolder() {
+    try {
+      const q = `mimeType='application/vnd.google-apps.folder' and name='${FOLDER_NAME}' and trashed=false`;
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      const data = await searchRes.json();
+
+      if (data.files && data.files.length > 0) {
+        return data.files[0].id;
+      }
+
+      // Create folder if not found
+      const createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: FOLDER_NAME,
+          mimeType: 'application/vnd.google-apps.folder',
+          description: '【愛台灣368行腳】專屬資料夾'
+        })
+      });
+
+      const newFolder = await createRes.json();
+      return newFolder.id;
+    } catch (e) {
+      console.warn('Could not create/find specific folder, defaulting to root:', e);
+      return null;
+    }
+  }
+
+  /**
+   * Upload or overwrite backup file inside the '愛台灣368行腳' folder
+   */
   async uploadBackupToDrive(backupData) {
     if (!this.accessToken) {
       throw new Error('尚未取得 Google 授權，請先登入 Google 帳號');
     }
 
+    const folderId = await this.getOrCreateAppFolder();
     const fileContent = JSON.stringify(backupData, null, 2);
-    const metadata = {
-      name: BACKUP_FILE_NAME,
-      mimeType: 'application/json',
-      description: '【愛台灣368行腳】個人足跡與相片備份檔案'
-    };
 
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-    form.append('file', new Blob([fileContent], { type: 'application/json' }));
-
-    const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`
-      },
-      body: form
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      throw new Error(`上傳 Google Drive 失敗: ${errText}`);
+    // Check if backup file already exists in Drive
+    let existingFileId = null;
+    try {
+      const q = `name='${BACKUP_FILE_NAME}' and trashed=false`;
+      const searchRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=modifiedTime desc`, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      const searchData = await searchRes.json();
+      if (searchData.files && searchData.files.length > 0) {
+        existingFileId = searchData.files[0].id;
+      }
+    } catch (e) {
+      console.warn('Search existing file warning:', e);
     }
 
-    return await res.json();
+    if (existingFileId) {
+      // Overwrite existing backup file directly
+      const form = new FormData();
+      const metadata = {
+        name: BACKUP_FILE_NAME,
+        mimeType: 'application/json'
+      };
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([fileContent], { type: 'application/json' }));
+
+      const patchRes = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=multipart`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${this.accessToken}` },
+        body: form
+      });
+
+      if (!patchRes.ok) {
+        const errText = await patchRes.text();
+        throw new Error(`更新雲端備份失敗: ${errText}`);
+      }
+      return await patchRes.json();
+    } else {
+      // Create new file inside folder
+      const metadata = {
+        name: BACKUP_FILE_NAME,
+        mimeType: 'application/json',
+        description: '【愛台灣368行腳】個人足跡與相片備份檔案',
+        ...(folderId ? { parents: [folderId] } : {})
+      };
+
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([fileContent], { type: 'application/json' }));
+
+      const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${this.accessToken}` },
+        body: form
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`上傳 Google Drive 失敗: ${errText}`);
+      }
+      return await res.json();
+    }
   }
 
   async fetchBackupFromDrive() {
@@ -98,7 +178,7 @@ class GDriveSyncService {
       throw new Error('尚未取得 Google 授權，請先登入 Google 帳號');
     }
 
-    // Search for backup file in user's Drive
+    // Search for backup file anywhere in user's Drive
     const searchRes = await fetch(
       `https://www.googleapis.com/drive/v3/files?q=name='${BACKUP_FILE_NAME}' and trashed=false&orderBy=modifiedTime desc`,
       {
