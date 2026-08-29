@@ -87,8 +87,8 @@ export default function CheckinModal({
     const files = Array.from(filesList || []);
     if (files.length === 0) return;
 
-    if (photos.length + files.length > 3) {
-      alert('每個鄉鎮最多支援上傳 3 張精選佐證照片！');
+    if (photos.length + files.length > 6) {
+      alert(`每個鄉鎮最多支援上傳 6 張照片（3景點+3美食）！目前已有 ${photos.length} 張。`);
       return;
     }
 
@@ -96,7 +96,6 @@ export default function CheckinModal({
     try {
       const compressedList = [];
       for (const file of files) {
-        console.log('Processing photo:', file.name, file.size, file.type);
         const dataUrl = await compressImage(file, 1000, 0.82);
         compressedList.push({
           id: `photo_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -322,19 +321,19 @@ export default function CheckinModal({
 
           </div>
 
-          {/* Photo Upload & Gallery */}
+          {/* Photo Upload & Gallery (Up to 6 photos) */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-emerald-600" />
-                <span>佐證照片 (上限 3 張)</span>
+                <span>足跡佐證相片 (上限 6 張：{photos.length}/6)</span>
               </label>
               <span className="text-[10px] text-slate-400">
-                自動壓縮為輕量高清格式
+                可為3景點+3美食各拍一張
               </span>
             </div>
 
-            {/* Hidden Inputs with Refs for bulletproof native triggers */}
+            {/* Hidden Inputs with Refs */}
             <input
               ref={cameraInputRef}
               type="file"
@@ -359,9 +358,9 @@ export default function CheckinModal({
               className="hidden"
             />
 
-            {/* Existing Photos Grid */}
+            {/* Existing Photos Grid (Up to 6 items) */}
             {photos.length > 0 && (
-              <div className="grid grid-cols-3 gap-2 mb-2.5">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-2.5">
                 {photos.map((p, index) => (
                   <div key={p.id} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-200 group shadow-xs">
                     <img
@@ -369,13 +368,16 @@ export default function CheckinModal({
                       alt={`照片 ${index + 1}`}
                       className="w-full h-full object-cover"
                     />
+                    <span className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded font-bold">
+                      #{index + 1}
+                    </span>
                     <button
                       type="button"
                       onClick={() => removePhoto(p.id)}
                       className="absolute top-1 right-1 p-1 bg-red-600/80 hover:bg-red-600 text-white rounded-full transition-colors shadow-sm"
                       title="刪除照片"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 ))}
@@ -383,7 +385,7 @@ export default function CheckinModal({
             )}
 
             {/* Dedicated Upload Action Buttons */}
-            {photos.length < 3 && (
+            {photos.length < 6 && (
               <div className="grid grid-cols-2 gap-2">
                 
                 {/* 1. Direct Camera Button */}
@@ -414,7 +416,7 @@ export default function CheckinModal({
                     從相簿選照片
                   </span>
                   <span className="text-[10px] text-sky-600">
-                    選取手機相簿圖檔
+                    多選手機相簿圖檔
                   </span>
                 </button>
 

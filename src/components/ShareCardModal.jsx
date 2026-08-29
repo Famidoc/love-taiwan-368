@@ -62,9 +62,9 @@ export default function ShareCardModal({
   const [hasError, setHasError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Photo mode: 0, 1, 2 (index of single photo) or 'collage' (all photos stitched)
+  // Photo mode: 0..5 (index of single photo) or 'collage' (all photos stitched)
   const photos = progress?.photos || [];
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0); // 0 | 1 | 2 | 'collage'
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
 
   const attractionsChecked = progress?.attractionsChecked || [];
   const foodsChecked = progress?.foodsChecked || [];
@@ -155,19 +155,19 @@ export default function ShareCardModal({
       // Render Photo(s)
       if (photos.length > 0) {
         if (selectedPhotoIndex === 'collage' && photos.length > 1) {
-          // COLLAGE MODE (2 or 3 photos)
+          // COLLAGE MODE (Supports 2 to 6 photos!)
           const loadedImages = await loadAllImages(photos.map(p => p.dataUrl));
           const validImgs = loadedImages.filter(Boolean);
+          const count = validImgs.length;
+          const gap = 10;
 
-          if (validImgs.length === 2) {
+          if (count === 2) {
             // 2 Photos: Side-by-side Split
-            const gap = 12;
             const singleW = (photoInnerW - gap) / 2;
             drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, singleW, photoInnerH, 8);
             drawImageCover(ctx, validImgs[1], photoInnerX + singleW + gap, photoInnerY, singleW, photoInnerH, 8);
-          } else if (validImgs.length >= 3) {
+          } else if (count === 3) {
             // 3 Photos: 1 Main Left + 2 Stacked Right
-            const gap = 12;
             const leftW = (photoInnerW - gap) * 0.58;
             const rightW = photoInnerW - gap - leftW;
             const rightH = (photoInnerH - gap) / 2;
@@ -175,16 +175,55 @@ export default function ShareCardModal({
             drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, leftW, photoInnerH, 8);
             drawImageCover(ctx, validImgs[1], photoInnerX + leftW + gap, photoInnerY, rightW, rightH, 8);
             drawImageCover(ctx, validImgs[2], photoInnerX + leftW + gap, photoInnerY + rightH + gap, rightW, rightH, 8);
+          } else if (count === 4) {
+            // 4 Photos: 2x2 Grid
+            const itemW = (photoInnerW - gap) / 2;
+            const itemH = (photoInnerH - gap) / 2;
+            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, itemW, itemH, 8);
+            drawImageCover(ctx, validImgs[1], photoInnerX + itemW + gap, photoInnerY, itemW, itemH, 8);
+            drawImageCover(ctx, validImgs[2], photoInnerX, photoInnerY + itemH + gap, itemW, itemH, 8);
+            drawImageCover(ctx, validImgs[3], photoInnerX + itemW + gap, photoInnerY + itemH + gap, itemW, itemH, 8);
+          } else if (count === 5) {
+            // 5 Photos: 2 Top + 3 Bottom
+            const topW = (photoInnerW - gap) / 2;
+            const topH = (photoInnerH - gap) * 0.52;
+            const btmW = (photoInnerW - gap * 2) / 3;
+            const btmH = photoInnerH - gap - topH;
+
+            drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, topW, topH, 8);
+            drawImageCover(ctx, validImgs[1], photoInnerX + topW + gap, photoInnerY, topW, topH, 8);
+            drawImageCover(ctx, validImgs[2], photoInnerX, photoInnerY + topH + gap, btmW, btmH, 8);
+            drawImageCover(ctx, validImgs[3], photoInnerX + btmW + gap, photoInnerY + topH + gap, btmW, btmH, 8);
+            drawImageCover(ctx, validImgs[4], photoInnerX + (btmW + gap) * 2, photoInnerY + topH + gap, btmW, btmH, 8);
+          } else if (count >= 6) {
+            // 6 Photos: 2 Rows x 3 Columns (3 Attractions + 3 Foods!)
+            const colW = (photoInnerW - gap * 2) / 3;
+            const rowH = (photoInnerH - gap) / 2;
+
+            for (let r = 0; r < 2; r++) {
+              for (let c = 0; c < 3; c++) {
+                const idx = r * 3 + c;
+                if (validImgs[idx]) {
+                  const ix = photoInnerX + c * (colW + gap);
+                  const iy = photoInnerY + r * (rowH + gap);
+                  drawImageCover(ctx, validImgs[idx], ix, iy, colW, rowH, 8);
+                }
+              }
+            }
           } else {
             drawImageCover(ctx, validImgs[0], photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
           }
         } else {
           // SINGLE PHOTO MODE
           const photoIdx = typeof selectedPhotoIndex === 'number' ? selectedPhotoIndex : 0;
-          const targetPhotoUrl = photos[photoIdx]?.dataUrl || photos[0].dataUrl;
-          const loadedImages = await loadAllImages([targetPhotoUrl]);
-          if (loadedImages[0]) {
-            drawImageCover(ctx, loadedImages[0], photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
+          const targetPhotoUrl = photos[photoIdx]?.dataUrl || photos[0]?.dataUrl;
+          if (targetPhotoUrl) {
+            const loadedImages = await loadAllImages([targetPhotoUrl]);
+            if (loadedImages[0]) {
+              drawImageCover(ctx, loadedImages[0], photoInnerX, photoInnerY, photoInnerW, photoInnerH, 12);
+            } else {
+              drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
+            }
           } else {
             drawFallbackPhoto(ctx, photoInnerX, photoInnerY, photoInnerW, photoInnerH, W);
           }
@@ -417,37 +456,37 @@ export default function ShareCardModal({
 
         {/* Multi-Photo Selector Toolbar (when user has multiple photos) */}
         {photos.length > 1 && (
-          <div className="px-4 py-2 bg-slate-200/80 border-b border-slate-300 flex items-center justify-between gap-2 text-xs">
-            <span className="font-bold text-slate-700 whitespace-nowrap">
-              選擇封面版型：
+          <div className="px-3 py-2 bg-slate-200/90 border-b border-slate-300 flex items-center justify-between gap-1.5 text-xs overflow-x-auto">
+            <span className="font-bold text-slate-700 shrink-0">
+              版型：
             </span>
-            <div className="flex items-center gap-1.5 overflow-x-auto">
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
               {photos.map((p, idx) => (
                 <button
                   key={p.id}
                   onClick={() => setSelectedPhotoIndex(idx)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                  className={`px-2 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
                     selectedPhotoIndex === idx
                       ? 'bg-emerald-700 text-white shadow-xs'
                       : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
                   }`}
                 >
                   <ImageIcon className="w-3 h-3" />
-                  <span>照片 {idx + 1}</span>
+                  <span>圖 {idx + 1}</span>
                 </button>
               ))}
 
               {/* Collage Button */}
               <button
                 onClick={() => setSelectedPhotoIndex('collage')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shrink-0 ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1 shrink-0 ${
                   selectedPhotoIndex === 'collage'
                     ? 'bg-amber-500 text-emerald-950 shadow-xs'
                     : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-300'
                 }`}
               >
-                <LayoutGrid className="w-3 h-3" />
-                <span>多圖拼貼 ({photos.length}張)</span>
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>{photos.length}圖拼貼</span>
               </button>
             </div>
           </div>
