@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Trophy, 
@@ -9,9 +9,10 @@ import {
   ShieldCheck, 
   Sparkles, 
   Smile, 
-  Save 
+  Save,
+  RefreshCw
 } from 'lucide-react';
-import { getLeaderboard, calculateBadge } from '../services/leaderboardApi';
+import { getLeaderboard, fetchCloudLeaderboard, calculateBadge, submitProgressToCloudLeaderboard } from '../services/leaderboardApi';
 
 const AVATAR_OPTIONS = ['🇹🇼', '🚴‍♂️', '⛰️', '📸', '🍜', '🚂', '🎒', '🏕️', '🧗‍♂️', '🛵', '🧭', '🌟'];
 
@@ -30,21 +31,44 @@ export default function LeaderboardModal({
   const [bio, setBio] = useState(userProfile?.bio || '踏遍台灣368個鄉鎮市區！');
   const [isPublic, setIsPublic] = useState(userProfile?.isPublic ?? true);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [cloudList, setCloudList] = useState(null);
+  const [isLoadingCloud, setIsLoadingCloud] = useState(false);
 
-  const leaderboardData = getLeaderboard(userProfile, progressMap);
+  const loadCloud = async () => {
+    setIsLoadingCloud(true);
+    try {
+      const data = await fetchCloudLeaderboard(userProfile, progressMap);
+      setCloudList(data);
+    } catch (e) {
+      console.warn('Failed to load cloud leaderboard:', e);
+    } finally {
+      setIsLoadingCloud(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadCloud();
+    }
+  }, [isOpen]);
+
+  const leaderboardData = getLeaderboard(userProfile, progressMap, cloudList);
   const myEntry = leaderboardData.find(e => e.isMe);
 
-  const handleSaveProfile = (e) => {
+  const handleSaveProfile = async (e) => {
     e.preventDefault();
-    onUpdateProfile({
+    const updated = {
       ...userProfile,
       nickname,
       avatar,
       bio,
       isPublic
-    });
+    };
+    onUpdateProfile(updated);
+    submitProgressToCloudLeaderboard(updated, progressMap);
     setSavedSuccess(true);
     setTimeout(() => setSavedSuccess(false), 2000);
+    setTimeout(() => loadCloud(), 1200);
   };
 
   return (
@@ -60,11 +84,24 @@ export default function LeaderboardModal({
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2">
-            <Trophy className="w-6 h-6 text-amber-200" />
-            <h2 className="text-xl font-black font-serif-tw tracking-wide">
-              368 行腳同好榮譽榜
-            </h2>
+          <div className="flex items-center justify-between pr-8">
+            <div className="flex items-center gap-2">
+              <Trophy className="w-6 h-6 text-amber-200" />
+              <h2 className="text-xl font-black font-serif-tw tracking-wide">
+                368 行腳同好榮譽榜
+              </h2>
+            </div>
+            {activeTab === 'ranking' && (
+              <button
+                onClick={loadCloud}
+                disabled={isLoadingCloud}
+                className="p-1.5 bg-black/20 hover:bg-black/40 rounded-xl text-amber-200 transition-all flex items-center gap-1 text-xs"
+                title="重新整理雲端榜單"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCloud ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">即時更新</span>
+              </button>
+            )}
           </div>
           <p className="text-xs text-amber-100 mt-1">
             與全台行腳旅人互相激勵，點亮屬於我們的每一寸土地！
@@ -142,7 +179,6 @@ export default function LeaderboardModal({
               {/* Leaderboard List */}
               <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
                 {leaderboardData.map((traveler) => {
-                  const isTop3 = traveler.rank <= 3;
                   const rankColors = {
                     1: 'bg-amber-400 text-amber-950 font-black ring-2 ring-amber-300',
                     2: 'bg-slate-300 text-slate-900 font-bold',
@@ -310,7 +346,7 @@ export default function LeaderboardModal({
               <div className="flex items-center justify-between pt-2">
                 {savedSuccess ? (
                   <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
-                    <Sparkles className="w-4 h-4" /> 名片已成功儲存！
+                    <Sparkles className="w-4 h-4" /> 名片已成功儲存並同步至全台風雲榜！
                   </span>
                 ) : <span />}
 

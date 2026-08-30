@@ -37,8 +37,10 @@ import {
 } from './services/storage';
 
 import { gdriveService, DEFAULT_GOOGLE_CLIENT_ID } from './services/gdrive';
+import { submitProgressToCloudLeaderboard } from './services/leaderboardApi';
 
 export default function App() {
+
   const [districts, setDistricts] = useState(rawDistrictsData || []);
   const [isLoading, setIsLoading] = useState(false);
   const [progressMap, setProgressMap] = useState({});
@@ -61,16 +63,23 @@ export default function App() {
 
   // Auto Background Push Helper
   const triggerAutoCloudBackup = useCallback((currentProgress, currentProfile) => {
+    const prof = currentProfile || userProfile;
+    const prog = currentProgress || progressMap;
+    
+    // Push score to global public leaderboard in background
+    submitProgressToCloudLeaderboard(prof, prog);
+
     if (!gdriveService.hasToken()) return;
     const backupObj = {
       appName: '愛台灣368行腳',
       version: '1.0',
       backupDate: new Date().toISOString(),
-      profile: currentProfile || userProfile,
-      progress: currentProgress || progressMap
+      profile: prof,
+      progress: prog
     };
     gdriveService.scheduleAutoBackup(backupObj, setCloudSyncState);
   }, [userProfile, progressMap]);
+
 
   // Load user progress on mount and initialize Auto-Sync
   useEffect(() => {
