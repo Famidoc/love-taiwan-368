@@ -33,11 +33,12 @@ export default function Header({
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-emerald-300 to-teal-400 p-0.5 shadow-md flex items-center justify-center shrink-0 overflow-hidden">
               <img 
-                src="./favicon.svg" 
+                src="./logo.png" 
                 alt="愛台灣368" 
                 className="w-full h-full object-cover rounded-xl"
               />
             </div>
+
 
 
             <div>
