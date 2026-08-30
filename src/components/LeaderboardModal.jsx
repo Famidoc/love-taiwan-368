@@ -191,6 +191,17 @@ export default function LeaderboardModal({
                 })}
               </div>
 
+              {leaderboardData.length <= 1 && (
+                <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200 text-center space-y-1">
+                  <p className="text-xs font-bold text-amber-900 flex items-center justify-center gap-1.5">
+                    <span>🌟</span> 您是目前榜上的先鋒行腳勇者！
+                  </p>
+                  <p className="text-[11px] text-slate-500">
+                    邀請好友一起加入 368 行腳之旅，在排行榜上一同切磋踏破進度吧！
+                  </p>
+                </div>
+              )}
+
             </div>
           )}
 

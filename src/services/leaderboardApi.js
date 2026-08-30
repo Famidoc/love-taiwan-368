@@ -3,74 +3,8 @@
  * Manages community progress, badges, and user rankings
  */
 
-// Simulated realistic active 368 travelers in the community
-const MOCK_COMMUNITY_TRAVELERS = [
-  {
-    id: 'user_001',
-    nickname: '單車老張',
-    avatar: '🚴‍♂️',
-    bio: '騎單車環島踏破全台！',
-    unlockedTownships: 284,
-    totalSpots: 1420,
-    completionRate: 77.2,
-    badge: '行腳大師',
-    badgeColor: 'bg-purple-100 text-purple-700 border-purple-300',
-    lastActive: '10分鐘前',
-    lastDistrict: '花蓮縣 豐濱鄉'
-  },
-  {
-    id: 'user_002',
-    nickname: '山海行者 阿哲',
-    avatar: '⛰️',
-    bio: '專注踏破東部與山岳鄉鎮。',
-    unlockedTownships: 198,
-    totalSpots: 990,
-    completionRate: 53.8,
-    badge: '百岳行者',
-    badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-    lastActive: '1小時前',
-    lastDistrict: '南投縣 仁愛鄉'
-  },
-  {
-    id: 'user_003',
-    nickname: '美食獵人 小涵',
-    avatar: '🍜',
-    bio: '吃遍全台 1,104 種必吃美食！',
-    unlockedTownships: 165,
-    totalSpots: 880,
-    completionRate: 44.8,
-    badge: '美食達人',
-    badgeColor: 'bg-amber-100 text-amber-700 border-amber-300',
-    lastActive: '3小時前',
-    lastDistrict: '台南市 國華街'
-  },
-  {
-    id: 'user_004',
-    nickname: '慢漫行 怡君',
-    avatar: '📸',
-    bio: '用拍立得記錄每一個鄉鎮的微笑。',
-    unlockedTownships: 112,
-    totalSpots: 560,
-    completionRate: 30.4,
-    badge: '行腳先鋒',
-    badgeColor: 'bg-blue-100 text-blue-700 border-blue-300',
-    lastActive: '昨天',
-    lastDistrict: '宜蘭縣 礁溪鄉'
-  },
-  {
-    id: 'user_005',
-    nickname: '鐵道旅人 Ken',
-    avatar: '🚂',
-    bio: '坐著火車慢遊各個小鎮。',
-    unlockedTownships: 89,
-    totalSpots: 430,
-    completionRate: 24.1,
-    badge: '尋幽探勝',
-    badgeColor: 'bg-slate-100 text-slate-700 border-slate-300',
-    lastActive: '2天前',
-    lastDistrict: '彰化縣 二水鄉'
-  }
-];
+// Real-time community travelers list (initially empty for fresh official launch)
+const MOCK_COMMUNITY_TRAVELERS = [];
 
 export function calculateBadge(unlockedCount) {
   if (unlockedCount >= 368) {
