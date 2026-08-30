@@ -50,7 +50,7 @@ export default function CommunityBanner({ isOpen, onClose }) {
               </div>
             </div>
             <a
-              href="https://line.me"
+              href="https://line.me/ti/g2/aqNLFUp0HwySqWNgQlAlmvoWXQEuc-eIM9Z3Yw?utm_source=invitation&utm_medium=link_copy&utm_campaign=default"
               target="_blank"
               rel="noreferrer"
               className="p-2.5 bg-[#06C755] hover:bg-[#05a847] text-white rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 shadow-xs"
