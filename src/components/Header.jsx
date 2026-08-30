@@ -31,11 +31,14 @@ export default function Header({
           
           {/* Logo and App Title */}
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-amber-400 to-emerald-400 p-0.5 shadow-md flex items-center justify-center shrink-0">
-              <div className="w-full h-full bg-emerald-950 rounded-2xl flex items-center justify-center text-lg sm:text-2xl">
-                🇹🇼
-              </div>
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-tr from-amber-400 via-emerald-300 to-teal-400 p-0.5 shadow-md flex items-center justify-center shrink-0 overflow-hidden">
+              <img 
+                src="./favicon.svg" 
+                alt="愛台灣368" 
+                className="w-full h-full object-cover rounded-xl"
+              />
             </div>
+
 
             <div>
               <div className="flex items-center space-x-2">
