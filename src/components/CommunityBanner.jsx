@@ -68,15 +68,18 @@ export default function CommunityBanner({ isOpen, onClose }) {
               </div>
               <div>
                 <h4 className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
-                  <span>愛台灣 368 行腳 粉絲團 & 交流社團</span>
+                  <span>愛台灣 368 行腳 官方交流社團</span>
+                  <span className="text-[10px] bg-sky-600 text-white px-2 py-0.2 rounded-full font-bold">
+                    公開社團
+                  </span>
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  打卡成果展示、曬拍立得足跡卡、每月精選景點故事
+                  打卡成果展示、曬拍立得足跡卡、路線心得與同好交流
                 </p>
               </div>
             </div>
             <a
-              href="https://facebook.com"
+              href="https://www.facebook.com/groups/2778046812578251"
               target="_blank"
               rel="noreferrer"
               className="p-2.5 bg-[#1877F2] hover:bg-[#1565cc] text-white rounded-xl text-xs font-bold flex items-center gap-1 shrink-0 shadow-xs"
@@ -93,7 +96,7 @@ export default function CommunityBanner({ isOpen, onClose }) {
               <span>行腳者社群分享小撇步</span>
             </div>
             <p className="text-slate-600 leading-relaxed">
-              點擊鄉鎮卡片上的「📸 拍立得」按鈕，可以一鍵生成包含您踏破照片與戳章的專屬美圖，直接貼在 LINE 群組或 FB 粉專上打卡！
+              點擊鄉鎮卡片上的「📸 拍立得」按鈕，可以一鍵生成包含您踏破照片與戳章的專屬美圖，直接貼在 LINE 社群或 FB 社團上打卡！
             </p>
           </div>
 
