@@ -11,7 +11,9 @@ import {
   CheckCircle2, 
   Utensils, 
   Camera,
-  RefreshCw
+  RefreshCw,
+  QrCode,
+  BookOpen
 } from 'lucide-react';
 
 export default function Header({
@@ -21,9 +23,12 @@ export default function Header({
   onOpenLeaderboard,
   onOpenSync,
   onOpenCommunity,
+  onOpenQrCode,
+  onOpenGuide,
   userProfile,
   cloudSyncState
 }) {
+
   return (
     <header className="sticky top-0 z-30 bg-emerald-900 text-white shadow-lg backdrop-blur-md bg-opacity-95 border-b border-emerald-800">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
@@ -175,6 +180,27 @@ export default function Header({
               <Users className="w-4 h-4 text-emerald-300" />
               <span className="hidden sm:inline">社群</span>
             </button>
+
+            {/* QR Code Button */}
+            <button
+              onClick={onOpenQrCode}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/60 text-xs font-semibold flex items-center gap-1 transition-all"
+              title="掃碼下載 / 分享 QR Code"
+            >
+              <QrCode className="w-4 h-4 text-amber-300" />
+              <span className="hidden lg:inline">QR Code</span>
+            </button>
+
+            {/* User Guide Button */}
+            <button
+              onClick={onOpenGuide}
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 border border-emerald-600/60 text-xs font-semibold flex items-center gap-1 transition-all"
+              title="完整使用說明手冊"
+            >
+              <BookOpen className="w-4 h-4 text-emerald-300" />
+              <span className="hidden lg:inline">說明</span>
+            </button>
+
 
           </div>
 

@@ -26,6 +26,9 @@ import LeaderboardModal from './components/LeaderboardModal';
 import CloudSyncModal from './components/CloudSyncModal';
 import CommunityBanner from './components/CommunityBanner';
 import DistrictPioneersModal from './components/DistrictPioneersModal';
+import QrCodeModal from './components/QrCodeModal';
+import UserGuideModal from './components/UserGuideModal';
+
 
 
 // Directly import raw 368 data for instant loading and 100% path safety on GitHub Pages & offline
@@ -63,6 +66,9 @@ export default function App() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
+  const [isQrCodeOpen, setIsQrCodeOpen] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
+
 
   // Jump and highlight district from Leaderboard footprint list
   const handleSelectDistrictFromModal = (district) => {
@@ -333,9 +339,12 @@ export default function App() {
         onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
         onOpenSync={() => setIsSyncOpen(true)}
         onOpenCommunity={() => setIsCommunityOpen(true)}
+        onOpenQrCode={() => setIsQrCodeOpen(true)}
+        onOpenGuide={() => setIsGuideOpen(true)}
         userProfile={userProfile}
         cloudSyncState={cloudSyncState}
       />
+
 
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6">
@@ -617,6 +626,19 @@ export default function App() {
         onClose={() => setActivePioneersDistrict(null)}
         onOpenCheckin={(d) => setActiveCheckinDistrict(d)}
       />
+
+      {/* 7. App QR Code Modal */}
+      <QrCodeModal
+        isOpen={isQrCodeOpen}
+        onClose={() => setIsQrCodeOpen(false)}
+      />
+
+      {/* 8. User Guide Manual Modal */}
+      <UserGuideModal
+        isOpen={isGuideOpen}
+        onClose={() => setIsGuideOpen(false)}
+      />
+
 
 
     </div>
