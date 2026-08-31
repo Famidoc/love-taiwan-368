@@ -25,6 +25,8 @@ import ShareCardModal from './components/ShareCardModal';
 import LeaderboardModal from './components/LeaderboardModal';
 import CloudSyncModal from './components/CloudSyncModal';
 import CommunityBanner from './components/CommunityBanner';
+import DistrictPioneersModal from './components/DistrictPioneersModal';
+
 
 // Directly import raw 368 data for instant loading and 100% path safety on GitHub Pages & offline
 import rawDistrictsData from '../public/data/taiwan368.json';
@@ -57,9 +59,20 @@ export default function App() {
   // Active Modals
   const [activeCheckinDistrict, setActiveCheckinDistrict] = useState(null);
   const [activeShareDistrict, setActiveShareDistrict] = useState(null);
+  const [activePioneersDistrict, setActivePioneersDistrict] = useState(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
+
+  // Jump and highlight district from Leaderboard footprint list
+  const handleSelectDistrictFromModal = (district) => {
+    setSelectedRegion('全部');
+    setSelectedCounty('');
+    setStatusFilter('all');
+    setSearchQuery(district.township);
+    setViewMode('list');
+  };
+
 
   // Auto Background Push Helper
   const triggerAutoCloudBackup = useCallback((currentProgress, currentProfile) => {
@@ -520,6 +533,7 @@ export default function App() {
                 onToggleSpot={handleToggleSpot}
                 onOpenCheckin={(d) => setActiveCheckinDistrict(d)}
                 onOpenShareCard={(d) => setActiveShareDistrict(d)}
+                onOpenPioneers={(d) => setActivePioneersDistrict(d)}
               />
             ))}
           </div>
@@ -570,9 +584,11 @@ export default function App() {
       <LeaderboardModal
         userProfile={userProfile}
         progressMap={progressMap}
+        districts={districts}
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
         onUpdateProfile={handleUpdateProfile}
+        onSelectDistrict={handleSelectDistrictFromModal}
       />
 
       {/* 4. Google Drive Sync & Local JSON Backup Modal */}
@@ -590,6 +606,18 @@ export default function App() {
         isOpen={isCommunityOpen}
         onClose={() => setIsCommunityOpen(false)}
       />
+
+      {/* 6. District Pioneers Modal */}
+      <DistrictPioneersModal
+        district={activePioneersDistrict}
+        progress={activePioneersDistrict ? progressMap[activePioneersDistrict.id] : null}
+        userProfile={userProfile}
+        progressMap={progressMap}
+        isOpen={Boolean(activePioneersDistrict)}
+        onClose={() => setActivePioneersDistrict(null)}
+        onOpenCheckin={(d) => setActiveCheckinDistrict(d)}
+      />
+
 
     </div>
   );

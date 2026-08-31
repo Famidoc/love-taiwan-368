@@ -1,12 +1,11 @@
 /**
  * Leaderboard & Community Service
- * Manages live community rankings via Google Sheets (Google Apps Script API)
+ * Manages live community rankings and district pioneers via Google Sheets
  */
 
 export const GAS_LEADERBOARD_API_URL = 'https://script.google.com/macros/s/AKfycbymOQQJXZ1mD4O0cErkPNz8Neo8p3gmGW8mU7yvwc6ceja8SxaYtypL4VhWK1798dO1/exec';
 
 const STORAGE_KEY_USER_ID = 'taiwan368_unique_user_id';
-
 
 export function getOrCreateUserId() {
   let uid = localStorage.getItem(STORAGE_KEY_USER_ID);
@@ -33,12 +32,14 @@ export function calculateBadge(unlockedCount) {
 }
 
 /**
- * Calculate user stats summary
+ * Calculate user stats summary and visited districts list
  */
 export function calculateUserSummary(currentUserProfile, currentUserProgress) {
   let userUnlockedCount = 0;
   let userTotalSpots = 0;
   let lastDistrictName = '尚無紀錄';
+  const visitedDistrictIds = [];
+  const visitedDistrictsMap = {};
 
   const progressKeys = Object.keys(currentUserProgress || {});
   progressKeys.forEach((key) => {
@@ -48,8 +49,16 @@ export function calculateUserSummary(currentUserProfile, currentUserProgress) {
     const spotsCount = attractionsCount + foodsCount;
 
     if (spotsCount > 0) {
+      const numId = Number(key);
       userTotalSpots += spotsCount;
       userUnlockedCount += 1;
+      visitedDistrictIds.push(numId);
+      visitedDistrictsMap[numId] = {
+        spotsCount,
+        rating: item.rating || 0,
+        notes: item.notes ? (item.notes.length > 30 ? item.notes.substring(0, 30) + '...' : item.notes) : '',
+        updatedAt: item.updatedAt || new Date().toISOString()
+      };
       if (item.township) {
         lastDistrictName = `${item.county || ''} ${item.township}`;
       }
@@ -70,6 +79,8 @@ export function calculateUserSummary(currentUserProfile, currentUserProgress) {
     badge: userBadge.name,
     badgeColor: userBadge.color,
     lastDistrict: lastDistrictName,
+    visitedDistrictIds,
+    visitedDistrictsMap,
     isPublic: currentUserProfile.isPublic !== false
   };
 }
@@ -114,6 +125,7 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
         badge: mySummary.badge,
         badgeColor: mySummary.badgeColor,
         lastDistrict: mySummary.lastDistrict,
+        visitedDistrictIds: mySummary.visitedDistrictIds,
         lastActive: '剛才'
       };
     }
@@ -133,6 +145,7 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
       badge: mySummary.badge,
       badgeColor: mySummary.badgeColor,
       lastDistrict: mySummary.lastDistrict,
+      visitedDistrictIds: mySummary.visitedDistrictIds,
       lastActive: '剛才'
     });
   }
@@ -159,7 +172,6 @@ export async function submitProgressToCloudLeaderboard(currentUserProfile, curre
       body: JSON.stringify(payload),
       mode: 'no-cors'
     });
-
     console.log('⚡ [Leaderboard] Score pushed to cloud successfully');
   } catch (e) {
     console.warn('⚠️ [Leaderboard] Failed to push score to cloud:', e);
@@ -181,4 +193,63 @@ export function getLeaderboard(currentUserProfile, currentUserProgress, cloudDat
     lastActive: '剛才',
     rank: 1
   }];
+}
+
+/**
+ * Get Pioneers for a specific district
+ */
+export function getDistrictPioneers(districtId, cloudData, currentUserProfile, currentUserProgress) {
+  const numId = Number(districtId);
+  const myProgress = currentUserProgress?.[districtId] || currentUserProgress?.[numId];
+  const mySummary = calculateUserSummary(currentUserProfile, currentUserProgress);
+  
+  const mySpots = (myProgress?.attractionsChecked?.length || 0) + (myProgress?.foodsChecked?.length || 0);
+  const pioneers = [];
+
+  // Check if current user visited
+  if (mySpots > 0) {
+    pioneers.push({
+      id: mySummary.userId,
+      isMe: true,
+      nickname: mySummary.nickname,
+      avatar: mySummary.avatar,
+      bio: mySummary.bio,
+      badge: mySummary.badge,
+      badgeColor: mySummary.badgeColor,
+      spotsCount: mySpots,
+      rating: myProgress?.rating || 0,
+      notes: myProgress?.notes || '',
+      updatedAt: myProgress?.updatedAt || '最近',
+      lastActive: '已在此插旗'
+    });
+  }
+
+  // Check other cloud travelers if available
+  if (cloudData && Array.isArray(cloudData)) {
+    cloudData.forEach(traveler => {
+      if (traveler.id === mySummary.userId) return; // already handled
+      
+      const visitedList = traveler.visitedDistrictIds || [];
+      const hasVisited = visitedList.includes(numId) || (traveler.lastDistrict && traveler.lastDistrict.includes(districtId));
+
+      if (hasVisited) {
+        pioneers.push({
+          id: traveler.id,
+          isMe: false,
+          nickname: traveler.nickname,
+          avatar: traveler.avatar,
+          bio: traveler.bio,
+          badge: traveler.badge,
+          badgeColor: traveler.badgeColor,
+          spotsCount: traveler.spotsCount || 1,
+          rating: 5,
+          notes: '',
+          updatedAt: traveler.lastActive || '不久前',
+          lastActive: traveler.lastActive || '曾到訪此地'
+        });
+      }
+    });
+  }
+
+  return pioneers;
 }

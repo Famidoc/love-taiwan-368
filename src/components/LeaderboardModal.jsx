@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Trophy, 
@@ -10,7 +10,13 @@ import {
   Sparkles, 
   Smile, 
   Save,
-  RefreshCw
+  RefreshCw,
+  MapPin,
+  Camera,
+  Utensils,
+  ChevronRight,
+  Compass,
+  Footprints
 } from 'lucide-react';
 import { getLeaderboard, fetchCloudLeaderboard, calculateBadge, submitProgressToCloudLeaderboard } from '../services/leaderboardApi';
 
@@ -19,13 +25,15 @@ const AVATAR_OPTIONS = ['🇹🇼', '🚴‍♂️', '⛰️', '📸', '🍜', '
 export default function LeaderboardModal({
   userProfile,
   progressMap,
+  districts = [],
   isOpen,
   onClose,
-  onUpdateProfile
+  onUpdateProfile,
+  onSelectDistrict
 }) {
   if (!isOpen) return null;
 
-  const [activeTab, setActiveTab] = useState('ranking'); // 'ranking' | 'profile' | 'badges'
+  const [activeTab, setActiveTab] = useState('ranking'); // 'ranking' | 'footprint' | 'badges' | 'profile'
   const [nickname, setNickname] = useState(userProfile?.nickname || '台灣行腳勇者');
   const [avatar, setAvatar] = useState(userProfile?.avatar || '🇹🇼');
   const [bio, setBio] = useState(userProfile?.bio || '踏遍台灣368個鄉鎮市區！');
@@ -55,6 +63,40 @@ export default function LeaderboardModal({
   const leaderboardData = getLeaderboard(userProfile, progressMap, cloudList);
   const myEntry = leaderboardData.find(e => e.isMe);
 
+  // Compute My Visited Districts Footprint List
+  const myVisitedList = useMemo(() => {
+    if (!districts || !progressMap) return [];
+    const list = [];
+    districts.forEach(d => {
+      const p = progressMap[d.id] || progressMap[String(d.id)];
+      const attsCount = p?.attractionsChecked?.length || 0;
+      const foodsCount = p?.foodsChecked?.length || 0;
+      const totalCount = attsCount + foodsCount;
+      if (totalCount > 0) {
+        list.push({
+          district: d,
+          progress: p,
+          attsCount,
+          foodsCount,
+          totalCount,
+          isCompleted: totalCount === 6,
+          rating: p.rating || 0,
+          notes: p.notes || '',
+          photosCount: p.photos?.length || 0,
+          photoUrl: p.photos?.[0]?.dataUrl || null,
+          updatedAt: p.updatedAt || ''
+        });
+      }
+    });
+    // Sort by updatedAt desc (most recent first)
+    list.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
+    return list;
+  }, [districts, progressMap]);
+
+  const totalCompletedDistricts = useMemo(() => {
+    return myVisitedList.filter(item => item.isCompleted).length;
+  }, [myVisitedList]);
+
   const handleSaveProfile = async (e) => {
     e.preventDefault();
     const updated = {
@@ -72,11 +114,11 @@ export default function LeaderboardModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden my-6 border border-slate-200 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden my-4 sm:my-6 border border-slate-200 animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[88vh]">
         
         {/* Modal Header */}
-        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-emerald-700 text-white p-5 relative shrink-0">
+        <div className="bg-gradient-to-r from-amber-500 via-amber-600 to-emerald-700 text-white p-4 sm:p-5 relative shrink-0">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-1.5 rounded-full bg-black/20 hover:bg-black/40 text-white transition-colors"
@@ -87,7 +129,7 @@ export default function LeaderboardModal({
           <div className="flex items-center justify-between pr-8">
             <div className="flex items-center gap-2">
               <Trophy className="w-6 h-6 text-amber-200" />
-              <h2 className="text-xl font-black font-serif-tw tracking-wide">
+              <h2 className="text-lg sm:text-xl font-black font-serif-tw tracking-wide">
                 368 行腳同好榮譽榜
               </h2>
             </div>
@@ -107,11 +149,11 @@ export default function LeaderboardModal({
             與全台行腳旅人互相激勵，點亮屬於我們的每一寸土地！
           </p>
 
-          {/* Navigation Tabs */}
-          <div className="flex items-center gap-2 mt-4">
+          {/* Navigation Tabs (Horizontal Scrollable for Mobile) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 mt-3.5 overflow-x-auto pb-1 no-scrollbar">
             <button
               onClick={() => setActiveTab('ranking')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === 'ranking'
                   ? 'bg-white text-slate-900 shadow-md'
                   : 'bg-black/20 text-amber-100 hover:bg-black/30'
@@ -120,24 +162,35 @@ export default function LeaderboardModal({
               🏆 全台踏破榜
             </button>
             <button
+              onClick={() => setActiveTab('footprint')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+                activeTab === 'footprint'
+                  ? 'bg-white text-slate-900 shadow-md'
+                  : 'bg-black/20 text-amber-100 hover:bg-black/30'
+              }`}
+            >
+              <Footprints className="w-3.5 h-3.5" />
+              <span>我的踏破清單 ({myVisitedList.length})</span>
+            </button>
+            <button
               onClick={() => setActiveTab('badges')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === 'badges'
                   ? 'bg-white text-slate-900 shadow-md'
                   : 'bg-black/20 text-amber-100 hover:bg-black/30'
               }`}
             >
-              🎖️ 徽章稱號體系
+              🎖️ 徽章體系
             </button>
             <button
               onClick={() => setActiveTab('profile')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === 'profile'
                   ? 'bg-white text-slate-900 shadow-md'
                   : 'bg-black/20 text-amber-100 hover:bg-black/30'
               }`}
             >
-              👤 我的名片設定
+              👤 我的名片
             </button>
           </div>
         </div>
@@ -153,7 +206,7 @@ export default function LeaderboardModal({
               {myEntry && (
                 <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-500/80 rounded-2xl p-3.5 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs font-mono">
                       #{myEntry.rank}
                     </div>
                     <div>
@@ -193,7 +246,7 @@ export default function LeaderboardModal({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs ${
+                        <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-mono ${
                           rankColors[traveler.rank] || 'bg-slate-100 text-slate-600 font-semibold'
                         }`}>
                           {traveler.rank}
@@ -241,7 +294,151 @@ export default function LeaderboardModal({
             </div>
           )}
 
-          {/* TAB 2: BADGES */}
+          {/* TAB 2: MY FOOTPRINT LIST */}
+          {activeTab === 'footprint' && (
+            <div className="space-y-4">
+              
+              {/* Summary Stats Card */}
+              <div className="bg-gradient-to-br from-emerald-800 to-teal-900 text-white rounded-2xl p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{userProfile?.avatar || '🇹🇼'}</span>
+                    <div>
+                      <h4 className="font-bold text-sm text-white">
+                        {userProfile?.nickname || '台灣行腳勇者'} 的踏破手帳
+                      </h4>
+                      <p className="text-xs text-emerald-200">
+                        {myEntry?.badge || '行腳啟程'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="text-2xl font-black text-amber-300">
+                      {((myVisitedList.length / 368) * 100).toFixed(1)}%
+                    </span>
+                    <p className="text-[10px] text-emerald-200">全台踏破率</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-700/60 text-center text-xs">
+                  <div className="bg-emerald-950/40 p-2 rounded-xl">
+                    <span className="text-base font-black text-emerald-300 block">{myVisitedList.length}</span>
+                    <span className="text-[10px] text-emerald-200">踏破鄉鎮 (368)</span>
+                  </div>
+                  <div className="bg-emerald-950/40 p-2 rounded-xl">
+                    <span className="text-base font-black text-amber-300 block">{totalCompletedDistricts}</span>
+                    <span className="text-[10px] text-emerald-200">全制霸鄉鎮 (6/6)</span>
+                  </div>
+                  <div className="bg-emerald-950/40 p-2 rounded-xl">
+                    <span className="text-base font-black text-sky-300 block">
+                      {myVisitedList.reduce((acc, cur) => acc + cur.totalCount, 0)}
+                    </span>
+                    <span className="text-[10px] text-emerald-200">景點與美食總數</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Visited Districts List */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between px-1 text-xs font-bold text-slate-700">
+                  <span>已踩點鄉鎮明細 ({myVisitedList.length})</span>
+                  <span className="text-[11px] text-slate-400 font-normal">點擊項目可跳轉至該區卡片</span>
+                </div>
+
+                {myVisitedList.length > 0 ? (
+                  <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+                    {myVisitedList.map(({ district, progress, totalCount, isCompleted, rating, notes, photosCount, photoUrl }) => (
+                      <div
+                        key={district.id}
+                        onClick={() => {
+                          if (onSelectDistrict) {
+                            onClose();
+                            onSelectDistrict(district);
+                          }
+                        }}
+                        className="p-3 sm:p-3.5 flex items-center justify-between hover:bg-emerald-50/40 transition-colors cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 pr-2">
+                          {/* Photo Thumbnail or Region Tag */}
+                          {photoUrl ? (
+                            <div className="w-11 h-11 rounded-xl overflow-hidden border border-slate-200 shrink-0 shadow-xs relative">
+                              <img
+                                src={photoUrl}
+                                alt="足跡照片"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                              {photosCount > 1 && (
+                                <span className="absolute bottom-0 right-0 bg-black/70 text-white text-[8px] px-1 rounded-tl font-bold">
+                                  +{photosCount - 1}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="w-11 h-11 rounded-xl bg-slate-100 border border-slate-200 flex flex-col items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
+                              <span>#{district.id.toString().padStart(3, '0')}</span>
+                              <span className="text-[9px] text-emerald-700">{district.region}</span>
+                            </div>
+                          )}
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-slate-500">{district.county}</span>
+                              <h4 className="font-bold text-slate-900 text-sm font-serif-tw">
+                                {district.township}
+                              </h4>
+                              {isCompleted ? (
+                                <span className="text-[10px] bg-emerald-600 text-white px-1.5 py-0.2 rounded-full font-bold">
+                                  全制霸
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-full font-semibold">
+                                  {totalCount}/6
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
+                              {rating > 0 && (
+                                <span className="text-amber-500 text-[11px] font-bold shrink-0">
+                                  {'★'.repeat(rating)}
+                                </span>
+                              )}
+                              {notes ? (
+                                <p className="truncate text-slate-600 italic text-[11px]">
+                                  "{notes}"
+                                </p>
+                              ) : (
+                                <span className="text-[10px] text-slate-400">已打卡完成</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-slate-400 group-hover:text-emerald-700 shrink-0 transition-colors">
+                          <span className="text-xs font-semibold hidden sm:inline">查看</span>
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-8 text-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 space-y-2">
+                    <Compass className="w-10 h-10 text-slate-300 mx-auto animate-bounce" />
+                    <p className="text-xs font-bold text-slate-700">
+                      目前尚未有踏破足跡！
+                    </p>
+                    <p className="text-[11px] text-slate-400">
+                      出門旅行打卡、品嚐美食，點亮屬於您的第一個鄉鎮吧！
+                    </p>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* TAB 3: BADGES */}
           {activeTab === 'badges' && (
             <div className="space-y-3">
               <p className="text-xs text-slate-600 leading-relaxed">
@@ -271,7 +468,7 @@ export default function LeaderboardModal({
             </div>
           )}
 
-          {/* TAB 3: PROFILE SETTINGS */}
+          {/* TAB 4: PROFILE SETTINGS */}
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="space-y-4">
               

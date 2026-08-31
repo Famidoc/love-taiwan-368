@@ -10,16 +10,20 @@ import {
   Star, 
   Image as ImageIcon,
   Sparkles,
-  ExternalLink
+  ExternalLink,
+  Users
 } from 'lucide-react';
+
 
 export default function DistrictCard({
   district,
   progress,
   onToggleSpot,
   onOpenCheckin,
-  onOpenShareCard
+  onOpenShareCard,
+  onOpenPioneers
 }) {
+
   const attractionsChecked = progress?.attractionsChecked || [];
   const foodsChecked = progress?.foodsChecked || [];
   const totalChecked = attractionsChecked.length + foodsChecked.length;
@@ -74,11 +78,22 @@ export default function DistrictCard({
             </div>
           </div>
 
-          {/* Status Badge */}
-          <div>
+          {/* Status Badge & Pioneers Button */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Pioneers Button */}
+            <button
+              onClick={() => onOpenPioneers && onOpenPioneers(district)}
+              className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-[11px] font-bold bg-slate-100 hover:bg-emerald-100 text-slate-600 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 transition-colors shadow-2xs cursor-pointer"
+              title="查看踏訪本區的先行者同好名冊"
+            >
+              <Users className="w-3 h-3 text-emerald-600" />
+              <span>先行者</span>
+            </button>
+
+            {/* Status Badge */}
             {isAllCompleted ? (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-xs animate-pulse">
-                <Sparkles className="w-3.5 h-3.5" />
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs font-bold bg-emerald-600 text-white shadow-xs animate-pulse">
+                <Sparkles className="w-3 h-3" />
                 <span>全制霸</span>
               </span>
             ) : totalChecked > 0 ? (
@@ -86,11 +101,12 @@ export default function DistrictCard({
                 <span>{totalChecked}/6 完成</span>
               </span>
             ) : (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs text-slate-400 bg-slate-100">
+              <span className="inline-flex items-center px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full text-xs text-slate-400 bg-slate-100 border border-slate-200">
                 未造訪
               </span>
             )}
           </div>
+
 
         </div>
 
