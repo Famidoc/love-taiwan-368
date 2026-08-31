@@ -7,7 +7,11 @@ export const GAS_LEADERBOARD_API_URL = 'https://script.google.com/macros/s/AKfyc
 
 const STORAGE_KEY_USER_ID = 'taiwan368_unique_user_id';
 
-export function getOrCreateUserId() {
+export function getOrCreateUserId(userProfile) {
+  if (userProfile?.userId) {
+    localStorage.setItem(STORAGE_KEY_USER_ID, userProfile.userId);
+    return userProfile.userId;
+  }
   let uid = localStorage.getItem(STORAGE_KEY_USER_ID);
   if (!uid) {
     uid = 'u_' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
@@ -69,7 +73,7 @@ export function calculateUserSummary(currentUserProfile, currentUserProgress) {
   const userBadge = calculateBadge(userUnlockedCount);
 
   return {
-    userId: getOrCreateUserId(),
+    userId: getOrCreateUserId(currentUserProfile),
     nickname: currentUserProfile.nickname || '台灣行腳勇者',
     avatar: currentUserProfile.avatar || '🇹🇼',
     bio: currentUserProfile.bio || '踏遍台灣368個鄉鎮市區！',
@@ -86,7 +90,7 @@ export function calculateUserSummary(currentUserProfile, currentUserProgress) {
 }
 
 /**
- * Fetch all travelers from Google Sheets cloud
+ * Fetch all travelers from Google Sheets cloud and deduplicate
  */
 export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgress) {
   const mySummary = calculateUserSummary(currentUserProfile, currentUserProgress);
@@ -108,28 +112,50 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
     }
   }
 
-  // Merge current user with cloud list
+  // Merge current user with cloud list and deduplicate by user ID / Nickname
   let hasMe = false;
-  const merged = cloudList.map(entry => {
-    if (String(entry.id) === String(myUserId)) {
-      hasMe = true;
-      return {
-        ...entry,
-        isMe: true,
-        nickname: mySummary.nickname,
-        avatar: mySummary.avatar,
-        bio: mySummary.bio,
-        unlockedTownships: mySummary.unlockedTownships,
-        totalSpots: mySummary.totalSpots,
-        completionRate: mySummary.completionRate,
-        badge: mySummary.badge,
-        badgeColor: mySummary.badgeColor,
-        lastDistrict: mySummary.lastDistrict,
-        visitedDistrictIds: mySummary.visitedDistrictIds,
-        lastActive: '剛才'
-      };
+  const seenUsers = new Set();
+  const merged = [];
+
+  cloudList.forEach(entry => {
+    const isThisMe = 
+      String(entry.id) === String(myUserId) || 
+      (mySummary.nickname && entry.nickname === mySummary.nickname);
+
+    if (isThisMe) {
+      if (!hasMe) {
+        hasMe = true;
+        // Keep consistent user ID
+        if (entry.id && entry.id !== myUserId) {
+          localStorage.setItem(STORAGE_KEY_USER_ID, entry.id);
+        }
+        seenUsers.add(mySummary.nickname);
+        seenUsers.add(String(entry.id));
+        merged.push({
+          ...entry,
+          id: entry.id || myUserId,
+          isMe: true,
+          nickname: mySummary.nickname,
+          avatar: mySummary.avatar,
+          bio: mySummary.bio,
+          unlockedTownships: Math.max(Number(entry.unlockedTownships || 0), mySummary.unlockedTownships),
+          totalSpots: Math.max(Number(entry.totalSpots || 0), mySummary.totalSpots),
+          completionRate: Math.max(Number(entry.completionRate || 0), mySummary.completionRate),
+          badge: mySummary.badge,
+          badgeColor: mySummary.badgeColor,
+          lastDistrict: mySummary.lastDistrict !== '尚無紀錄' ? mySummary.lastDistrict : (entry.lastDistrict || '尚無紀錄'),
+          visitedDistrictIds: mySummary.visitedDistrictIds,
+          lastActive: '剛才'
+        });
+      }
+      // If already added, skip duplicate
+    } else {
+      if (!seenUsers.has(entry.nickname)) {
+        seenUsers.add(entry.nickname);
+        seenUsers.add(String(entry.id));
+        merged.push({ ...entry, isMe: false });
+      }
     }
-    return { ...entry, isMe: false };
   });
 
   if (!hasMe) {
@@ -207,12 +233,15 @@ export function getDistrictPioneers(district, cloudData, currentUserProfile, cur
   
   const mySpots = (myProgress?.attractionsChecked?.length || 0) + (myProgress?.foodsChecked?.length || 0);
   const pioneers = [];
+  const seenUsers = new Set();
 
   const districtFullName = typeof district === 'object' ? `${district.county || ''} ${district.township || ''}`.trim() : '';
   const districtTownship = typeof district === 'object' ? (district.township || '').trim() : '';
 
   // 1. Check if current user visited
   if (mySpots > 0) {
+    seenUsers.add(mySummary.nickname);
+    seenUsers.add(String(mySummary.userId));
     pioneers.push({
       id: mySummary.userId,
       isMe: true,
@@ -232,7 +261,10 @@ export function getDistrictPioneers(district, cloudData, currentUserProfile, cur
   // 2. Check other cloud travelers from Google Sheets
   if (cloudData && Array.isArray(cloudData)) {
     cloudData.forEach(traveler => {
-      if (String(traveler.id) === String(mySummary.userId)) return; // already added as current user
+      // If already seen this user (e.g. current user on another device or duplicate entry), skip
+      if (seenUsers.has(traveler.nickname) || seenUsers.has(String(traveler.id))) {
+        return;
+      }
       
       const visitedList = traveler.visitedDistrictIds || [];
       const lastDist = traveler.lastDistrict || '';
@@ -243,6 +275,8 @@ export function getDistrictPioneers(district, cloudData, currentUserProfile, cur
         (districtTownship && lastDist.includes(districtTownship));
 
       if (hasVisited) {
+        seenUsers.add(traveler.nickname);
+        seenUsers.add(String(traveler.id));
         pioneers.push({
           id: traveler.id,
           isMe: false,
@@ -263,4 +297,3 @@ export function getDistrictPioneers(district, cloudData, currentUserProfile, cur
 
   return pioneers;
 }
-
