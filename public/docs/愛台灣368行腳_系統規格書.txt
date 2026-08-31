@@ -1,0 +1,184 @@
+================================================================================
+【愛台灣 368 行腳】系統規格書 (System Architecture & Specification)
+================================================================================
+
+文件版本：v1.0.0
+發布日期：2026 年 8 月
+專案作者：張文華醫師 (Famidoc Chang) & Antigravity 2.0
+正式網址：https://famidoc.github.io/love-taiwan-368/
+GitHub 倉庫：https://github.com/Famidoc/love-taiwan-368.git
+開發路徑：D:\antigravity\love-taiwan-368\
+
+--------------------------------------------------------------------------------
+一、 系統概述 (System Overview)
+--------------------------------------------------------------------------------
+「愛台灣 368 行腳」是一款專為熱愛台灣土地、單車環島、深度旅遊與鄉鎮踏破愛好者打造的現代化漸進式網頁應用程式 (PWA)。系統完整收錄全台灣 22 縣市、368 個鄉鎮市區，並為每個鄉鎮精心規劃「必訪 3 大景點」與「必吃 3 大美食」（全台共計 1,104 個景點與 1,104 道在地美食）。
+
+核心設計理念：
+1. 離線優先 (Offline-First)：無網路時仍可順暢查閱圖鑑、打卡、拍照與記錄手帳。
+2. 隱私優先 (Privacy-First)：個人打卡照片與心得完整儲存在使用者本地設備 (IndexedDB) 及個人 Google Drive，不建立集中式私人相片伺服器。
+3. 零門檻社群連線 (Zero-Barrier Community)：排行榜與先行者名錄免註冊登入即可匿名即時連線參與。
+4. 極致輕量與全跨平台：相容於 iOS (Safari)、Android (Chrome) 及 Windows/Mac 桌面端。
+
+--------------------------------------------------------------------------------
+二、 系統技術棧 (Technology Stack)
+--------------------------------------------------------------------------------
+1. 前端框架 (Frontend Core)：
+   - React 18 (React DOM, React Hooks)
+   - Vite 6.x (極速前端構建與熱重載工具)
+2. 樣式與視覺 (UI & Styling)：
+   - Tailwind CSS 3.x (響應式設計、深綠金傳統台灣美學)
+   - Lucide React (現代向量圖標庫)
+   - Canvas Confetti (完成成就彩帶特效)
+   - HTML2Canvas (拍立得足跡卡片渲染生成)
+3. 本地儲存與記憶體優化 (Local Storage & Image Optimization)：
+   - IndexedDB (`idb-keyval`)：大容量持久化儲存使用者照片與詳細打卡筆記。
+   - LocalStorage：使用者偏好設定、名片資訊、Google OAuth Token 與快取。
+   - 瀏覽器原生 `createImageBitmap` / `HTMLCanvasElement`：支援 12MP~48MP 高畫質照片即時壓縮至 1000px/0.82 quality JPEG。
+4. 雲端後端與通訊 (Cloud Backend & APIs)：
+   - Google Drive API (Google Identity Services OAuth 2.0)：個人跨裝置備份 (`taiwan368_backup.json`)。
+   - Google Apps Script (GAS) Web App：全台同好排行榜與先行者名錄無伺服器 (Serverless) 後端資料庫。
+   - Google Sheets (試算表)：作為全台風雲榜後端持久化資料庫 (`愛台灣368行腳_全台風雲榜`)。
+5. 部署與託管 (Hosting & Deployment)：
+   - GitHub Pages (靜態單頁 PWA 託管)
+   - PWA Web App Manifest (支援桌面圖標 180x180, 192x192, 512x512, 獨立視窗 Standalone 模式)
+
+--------------------------------------------------------------------------------
+三、 資料模型與結構規格 (Data Schema & Models)
+--------------------------------------------------------------------------------
+
+1. 鄉鎮基礎資料模型 (District Base Schema - taiwan368.json)
+   [
+     {
+       "id": 57,                         // 鄉鎮數字唯一代碼 (1 ~ 368)
+       "county": "臺中市",                // 所屬縣市名稱
+       "township": "南區",                // 鄉鎮市區名稱
+       "postalCode": "402",              // 3碼郵遞區號
+       "region": "中部",                  // 分區 (北部/中部/南部/東部/離島)
+       "districtType": "市轄區",          // 行政區類別 (市轄區/市/鎮/鄉/山地原住民區)
+       "attractions": [                  // 必訪 3 大景點
+         { "id": "att_57_1", "name": "國立公共資訊圖書館" },
+         { "id": "att_57_2", "name": "中興大學" },
+         { "id": "att_57_3", "name": "臺中文化創意產業園區" }
+       ],
+       "foods": [                        // 必吃 3 大美食
+         { "id": "food_57_1", "name": "台中肉員" },
+         { "id": "food_57_2", "name": "正老牌臭豆腐" },
+         { "id": "food_57_3", "name": "忠孝老牌排骨飯" }
+       ]
+     }
+   ]
+
+2. 使用者打卡進度模型 (User Progress Model - IndexedDB `taiwan368_user_progress`)
+   {
+     "[districtId]": {
+       "districtId": 57,
+       "county": "臺中市",
+       "township": "南區",
+       "visited": true,                  // 是否已踏訪 (打卡數 > 0)
+       "isCompleted": false,             // 是否 6/6 全制霸
+       "completedDate": "2026-08-31",    // 踩點打卡日期 (YYYY-MM-DD)
+       "attractionsChecked": ["att_57_1", "att_57_2", "att_57_3"],
+       "foodsChecked": ["food_57_1"],
+       "rating": 5,                      // 鄉鎮體驗評分 (1 ~ 5 星)
+       "notes": "中興大學綠樹成蔭，肉圓皮Q醬香！", // 隨手筆記心得
+       "photos": [                       // 佐證照片清單 (上限 6 張)
+         {
+           "id": "photo_1788168183_abc",
+           "dataUrl": "data:image/jpeg;base64,...",
+           "createdAt": "2026-08-31T08:30:00.000Z"
+         }
+       ],
+       "updatedAt": "2026-08-31T08:31:00.000Z"
+     }
+   }
+
+3. 使用者個人名片模型 (User Profile Model - LocalStorage `taiwan368_user_profile`)
+   {
+     "userId": "u_0f76dcnmtft05",        // 匿名唯一識別碼
+     "nickname": "Famidoc",              // 同行者稱呼 / 暱稱
+     "avatar": "🎒",                     // 代表頭像 Emoji
+     "bio": "踏遍台灣368個鄉鎮市區！",     // 行腳宣言
+     "isPublic": true,                   // 是否公開列入同好排行榜
+     "googleEmail": "user@gmail.com",    // 授權 Google 帳號 (選填)
+     "lastSyncTime": "2026-08-31T08:31:50.455Z"
+   }
+
+4. 全台風雲榜資料庫 Schema (Google Sheet: Leaderboard)
+   - 欄位 A: 用戶唯一ID (userId)
+   - 欄位 B: 暱稱 (nickname)
+   - 欄位 C: 頭像 (avatar)
+   - 欄位 D: 自我介紹 (bio)
+   - 欄位 E: 踏破鄉鎮數 (unlockedTownships)
+   - 欄位 F: 打卡總數 (totalSpots)
+   - 欄位 G: 踏破率% (completionRate)
+   - 欄位 H: 稱號徽章 (badge)
+   - 欄位 I: 徽章樣式 (badgeColor)
+   - 欄位 J: 最後踏破鄉鎮 (lastDistrict)
+   - 欄位 K: 最後活躍時間 (lastActive)
+
+--------------------------------------------------------------------------------
+四、 核心功能模組與運作架構 (Core Feature Modules)
+--------------------------------------------------------------------------------
+
+1. 【368 鄉鎮圖鑑與篩選系統】(DistrictCard & Filter System)
+   - 支援 5 大分區（北部、中部、南部、東部、離島）即時切換。
+   - 支援縣市下拉篩選（22 縣市）。
+   - 支援狀態篩選（全部、已完成、探索中、未造訪）。
+   - 支援關鍵字搜尋（即時搜尋縣市名、鄉鎮名、景點名、美食名、郵遞區號）。
+   - 支援「圖鑑卡片」與「全台可視化地圖」雙檢視模式。
+
+2. 【打卡手帳與多媒體記錄】(CheckinModal)
+   - 必訪景點 (3) 與必吃美食 (3) 獨立勾選，附帶 Google 地圖一鍵導航按鈕。
+   - 支援相機即時拍攝與相簿多選上傳，自動以高畫質壓縮（防當機與記憶體溢出）。
+   - 支援 1~5 星評分與心得筆記。
+   - 達成 6/6 全制霸時觸發全螢幕勝利彩帶 (Confetti)。
+   - **未儲存智慧防呆保護**：若使用者編輯過內容或拍照後未按存檔即嘗試關閉燈箱，系統會自動攔截並彈出防呆選單（【儲存紀錄並關閉】、【放棄本次修改】、【返回繼續編輯】）。
+
+3. 【拍立得足跡成就卡生成】(ShareCardModal)
+   - 一鍵將打卡成果、精選照片、星級評分、徽章稱號與 QR Code 渲染成復古拍立得卡片。
+   - 支援一鍵下載高畫質 PNG 圖檔或直接透過 Web Share API 分享至 LINE / Facebook。
+
+4. 【各區「先行者」榮譽名冊】(DistrictPioneersModal)
+   - 每張鄉鎮卡片右上角設有【先行者】按鈕。
+   - 點擊後即時自 Google 試算表抓取曾踏訪此鄉鎮的所有同好名冊。
+   - 支援跨設備同名自動去重（Deduplication），維護乾淨名冊。
+
+5. 【同好排行榜與我的踏破清單】(LeaderboardModal)
+   - 分頁 1「🏆 全台踏破榜」：即時列出全台行腳旅人戰績與排行。
+   - 分頁 2「🗺️ 我的踏破清單」：以手帳清單列出個人所有已踏訪鄉鎮、照片縮圖、心得與評分，點擊可直接跳轉定位。
+   - 分頁 3「🎖️ 徽章稱號體系」：展示 6 大成就等級（行腳啟程、探路新星、行腳先鋒、百岳行者、行腳大師、環島傳奇）。
+   - 分頁 4「👤 我的名片設定」：自訂暱稱、頭像與公開狀態。
+
+6. 【Google Drive 無感備份與跨設備同步】(gdrive.js & CloudSyncModal)
+   - 整合 Google Identity Services (GIS) OAuth 2.0 登入。
+   - 背景自動防抖 (Debounce 2000ms) 推播備份至 Google Drive。
+   - 跨設備啟動時自動檢查雲端時間戳記，智慧下載最新進度。
+   - 支援本機離線 JSON 備份檔匯出與還原。
+
+7. 【社群交流與分享】(CommunityBanner & QrCodeModal)
+   - 內建 LINE 官方社群與 Facebook 公開社團連結。
+   - 內建 App 網址專屬 QR Code，便於現場面對面掃碼分享。
+
+--------------------------------------------------------------------------------
+五、 部署與維護指令指南 (Maintenance & Operations)
+--------------------------------------------------------------------------------
+
+1. 本機開發啟動：
+   npm run dev
+
+2. 編譯生產環境檔案：
+   node node_modules/vite/bin/vite.js build
+
+3. 一鍵部署至 GitHub Pages：
+   node scripts/deploy.js
+
+4. 專案重要常數配置位置：
+   - GAS 風雲榜 API 網址：`src/services/leaderboardApi.js` -> `GAS_LEADERBOARD_API_URL`
+   - Google Drive Client ID：`src/services/gdrive.js` -> `DEFAULT_GOOGLE_CLIENT_ID`
+   - LINE 社群連結：`src/components/CommunityBanner.jsx`
+   - FB 社團連結：`src/components/CommunityBanner.jsx`
+
+================================================================================
+規格書編製完成 • 愛台灣 368 行腳手帳
+================================================================================
