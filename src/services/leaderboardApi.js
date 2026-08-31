@@ -196,9 +196,11 @@ export function getLeaderboard(currentUserProfile, currentUserProgress, cloudDat
 }
 
 /**
- * Get Pioneers for a specific district
+ * Get Pioneers for a specific district (matches by ID, county/township name, and visited list)
  */
-export function getDistrictPioneers(districtId, cloudData, currentUserProfile, currentUserProgress) {
+export function getDistrictPioneers(district, cloudData, currentUserProfile, currentUserProgress) {
+  if (!district) return [];
+  const districtId = typeof district === 'object' ? district.id : district;
   const numId = Number(districtId);
   const myProgress = currentUserProgress?.[districtId] || currentUserProgress?.[numId];
   const mySummary = calculateUserSummary(currentUserProfile, currentUserProgress);
@@ -206,7 +208,10 @@ export function getDistrictPioneers(districtId, cloudData, currentUserProfile, c
   const mySpots = (myProgress?.attractionsChecked?.length || 0) + (myProgress?.foodsChecked?.length || 0);
   const pioneers = [];
 
-  // Check if current user visited
+  const districtFullName = typeof district === 'object' ? `${district.county || ''} ${district.township || ''}`.trim() : '';
+  const districtTownship = typeof district === 'object' ? (district.township || '').trim() : '';
+
+  // 1. Check if current user visited
   if (mySpots > 0) {
     pioneers.push({
       id: mySummary.userId,
@@ -224,27 +229,32 @@ export function getDistrictPioneers(districtId, cloudData, currentUserProfile, c
     });
   }
 
-  // Check other cloud travelers if available
+  // 2. Check other cloud travelers from Google Sheets
   if (cloudData && Array.isArray(cloudData)) {
     cloudData.forEach(traveler => {
-      if (traveler.id === mySummary.userId) return; // already handled
+      if (String(traveler.id) === String(mySummary.userId)) return; // already added as current user
       
       const visitedList = traveler.visitedDistrictIds || [];
-      const hasVisited = visitedList.includes(numId) || (traveler.lastDistrict && traveler.lastDistrict.includes(districtId));
+      const lastDist = traveler.lastDistrict || '';
+
+      const hasVisited = 
+        visitedList.includes(numId) || 
+        (districtFullName && lastDist.includes(districtFullName)) ||
+        (districtTownship && lastDist.includes(districtTownship));
 
       if (hasVisited) {
         pioneers.push({
           id: traveler.id,
           isMe: false,
-          nickname: traveler.nickname,
-          avatar: traveler.avatar,
-          bio: traveler.bio,
-          badge: traveler.badge,
-          badgeColor: traveler.badgeColor,
-          spotsCount: traveler.spotsCount || 1,
+          nickname: traveler.nickname || '同好行腳者',
+          avatar: traveler.avatar || '🇹🇼',
+          bio: traveler.bio || '',
+          badge: traveler.badge || '行腳啟程',
+          badgeColor: traveler.badgeColor || 'bg-slate-100 text-slate-700 border-slate-300',
+          spotsCount: traveler.totalSpots || traveler.spotsCount || 4,
           rating: 5,
           notes: '',
-          updatedAt: traveler.lastActive || '不久前',
+          updatedAt: traveler.lastActive || '最近',
           lastActive: traveler.lastActive || '曾到訪此地'
         });
       }
@@ -253,3 +263,4 @@ export function getDistrictPioneers(districtId, cloudData, currentUserProfile, c
 
   return pioneers;
 }
+

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Users, 
@@ -10,30 +10,51 @@ import {
   CheckCircle2, 
   Camera, 
   Compass,
-  Footprints
+  Footprints,
+  RefreshCw
 } from 'lucide-react';
-import { getDistrictPioneers } from '../services/leaderboardApi';
+import { getDistrictPioneers, fetchCloudLeaderboard } from '../services/leaderboardApi';
 
 export default function DistrictPioneersModal({
   district,
   progress,
   userProfile,
   progressMap,
-  cloudLeaderboard,
   isOpen,
   onClose,
   onOpenCheckin
 }) {
   if (!isOpen || !district) return null;
 
+  const [cloudList, setCloudList] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadCloud = async () => {
+    setIsLoading(true);
+    try {
+      const data = await fetchCloudLeaderboard(userProfile, progressMap);
+      setCloudList(data || []);
+    } catch (err) {
+      console.warn('Failed to fetch cloud pioneers:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadCloud();
+    }
+  }, [isOpen, district]);
+
   const pioneers = getDistrictPioneers(
-    district.id, 
-    cloudLeaderboard, 
+    district, 
+    cloudList, 
     userProfile, 
     progressMap
   );
 
-  const myProgress = progressMap?.[district.id];
+  const myProgress = progressMap?.[district.id] || progressMap?.[Number(district.id)];
   const mySpotsCount = (myProgress?.attractionsChecked?.length || 0) + (myProgress?.foodsChecked?.length || 0);
   const isMyDistrictVisited = mySpotsCount > 0;
 
@@ -50,12 +71,25 @@ export default function DistrictPioneersModal({
             <X className="w-5 h-5" />
           </button>
 
-          <div className="flex items-center gap-2">
-            <Footprints className="w-6 h-6 text-amber-300" />
-            <h2 className="text-lg sm:text-xl font-black font-serif-tw tracking-wide">
-              {district.county} {district.township} • 先行者名錄
-            </h2>
+          <div className="flex items-center justify-between pr-8">
+            <div className="flex items-center gap-2">
+              <Footprints className="w-6 h-6 text-amber-300" />
+              <h2 className="text-lg sm:text-xl font-black font-serif-tw tracking-wide">
+                {district.county} {district.township} • 先行者名錄
+              </h2>
+            </div>
+
+            <button
+              onClick={loadCloud}
+              disabled={isLoading}
+              className="p-1.5 bg-black/20 hover:bg-black/40 rounded-xl text-emerald-200 transition-all flex items-center gap-1 text-xs"
+              title="重新整理雲端榜單"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">更新</span>
+            </button>
           </div>
+
           <p className="text-xs text-emerald-200 mt-1">
             記錄踏訪【{district.county} {district.township}】的榮譽行腳勇者
           </p>
@@ -117,8 +151,13 @@ export default function DistrictPioneersModal({
               <span>踏訪勇者名單 ({pioneers.length})</span>
             </h4>
 
-            {pioneers.length > 0 ? (
-              <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white">
+            {isLoading ? (
+              <div className="py-8 text-center space-y-2">
+                <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs text-slate-400">正在同步雲端同好名錄...</p>
+              </div>
+            ) : pioneers.length > 0 ? (
+              <div className="divide-y divide-slate-100 border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
                 {pioneers.map((traveler, idx) => (
                   <div
                     key={traveler.id || idx}
