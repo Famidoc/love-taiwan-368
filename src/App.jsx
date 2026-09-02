@@ -81,12 +81,14 @@ export default function App() {
 
 
   // Auto Background Push Helper
-  const triggerAutoCloudBackup = useCallback((currentProgress, currentProfile) => {
+  const triggerAutoCloudBackup = useCallback((currentProgress, currentProfile, pushToLeaderboard = false) => {
     const prof = currentProfile || userProfile;
     const prog = currentProgress || progressMap;
     
-    // Push score to global public leaderboard in background
-    submitProgressToCloudLeaderboard(prof, prog);
+    // Only push score to global public leaderboard when explicitly requested (e.g. Save in Modal or Update Profile)
+    if (pushToLeaderboard) {
+      submitProgressToCloudLeaderboard(prof, prog);
+    }
 
     if (!gdriveService.hasToken()) return;
     const backupObj = {
@@ -186,7 +188,7 @@ export default function App() {
     };
   }, [progressMap]);
 
-  // Handle Quick Spot Toggle from card
+  // Handle Quick Spot Toggle from card (Local and Drive backup only, NO Sheet upload)
   const handleToggleSpot = (districtId, type, spotId) => {
     const current = progressMap[districtId] || {
       districtId,
@@ -244,10 +246,11 @@ export default function App() {
 
     setProgressMap(nextProgress);
     saveUserProgress(nextProgress);
-    triggerAutoCloudBackup(nextProgress, userProfile);
+    // 卡片快速點擊：僅保存到本地及 Google Drive，不上傳公開風雲榜
+    triggerAutoCloudBackup(nextProgress, userProfile, false);
   };
 
-  // Handle Save from Checkin Modal
+  // Handle Save from Checkin Modal (Explicit Save -> Push to Sheet Leaderboard)
   const handleSaveProgress = (districtId, data) => {
     const nextProgress = {
       ...progressMap,
@@ -255,14 +258,16 @@ export default function App() {
     };
     setProgressMap(nextProgress);
     saveUserProgress(nextProgress);
-    triggerAutoCloudBackup(nextProgress, userProfile);
+    // 打卡彈窗明確儲存：推送到公開風雲榜
+    triggerAutoCloudBackup(nextProgress, userProfile, true);
   };
 
-  // Handle Profile Update
+  // Handle Profile Update (Explicit Save -> Push to Sheet Leaderboard)
   const handleUpdateProfile = (newProfile) => {
     setUserProfile(newProfile);
     saveUserProfile(newProfile);
-    triggerAutoCloudBackup(progressMap, newProfile);
+    // 儲存名片設定：推送到公開風雲榜
+    triggerAutoCloudBackup(progressMap, newProfile, true);
   };
 
   // Handle Restore

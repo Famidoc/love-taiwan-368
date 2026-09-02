@@ -150,10 +150,10 @@ export default function LeaderboardModal({
           </p>
 
           {/* Navigation Tabs (Horizontal Scrollable for Mobile) */}
-          <div className="flex items-center gap-1.5 sm:gap-2 mt-3.5 overflow-x-auto pb-1 no-scrollbar">
+          <div className="flex items-center gap-1 sm:gap-2 mt-3.5 overflow-x-auto pb-1 no-scrollbar">
             <button
               onClick={() => setActiveTab('ranking')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === 'ranking'
                   ? 'bg-white text-slate-900 shadow-md'
                   : 'bg-black/20 text-amber-100 hover:bg-black/30'
@@ -163,7 +163,7 @@ export default function LeaderboardModal({
             </button>
             <button
               onClick={() => setActiveTab('footprint')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1 ${
                 activeTab === 'footprint'
                   ? 'bg-white text-slate-900 shadow-md'
                   : 'bg-black/20 text-amber-100 hover:bg-black/30'
@@ -173,24 +173,27 @@ export default function LeaderboardModal({
               <span>我的踏破清單 ({myVisitedList.length})</span>
             </button>
             <button
+              onClick={() => setActiveTab('profile')}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all relative ${
+                activeTab === 'profile'
+                  ? 'bg-white text-slate-900 shadow-md'
+                  : 'bg-black/20 text-amber-100 hover:bg-black/30'
+              }`}
+            >
+              <span>👤 我的名片</span>
+              {(userProfile?.nickname === '台灣行腳勇者' || !userProfile?.nickname) && (
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-amber-300 rounded-full animate-ping" />
+              )}
+            </button>
+            <button
               onClick={() => setActiveTab('badges')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === 'badges'
                   ? 'bg-white text-slate-900 shadow-md'
                   : 'bg-black/20 text-amber-100 hover:bg-black/30'
               }`}
             >
               🎖️ 徽章體系
-            </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                activeTab === 'profile'
-                  ? 'bg-white text-slate-900 shadow-md'
-                  : 'bg-black/20 text-amber-100 hover:bg-black/30'
-              }`}
-            >
-              👤 我的名片
             </button>
           </div>
         </div>
@@ -204,28 +207,46 @@ export default function LeaderboardModal({
               
               {/* My Sticky Rank Card */}
               {myEntry && (
-                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-500/80 rounded-2xl p-3.5 shadow-sm flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs font-mono">
-                      #{myEntry.rank}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{myEntry.avatar}</span>
-                        <span className="font-black text-slate-900 text-sm">{myEntry.nickname}</span>
-                        <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
-                          您
-                        </span>
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-500/80 rounded-2xl p-3.5 shadow-sm space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shadow-xs font-mono">
+                        #{myEntry.rank}
                       </div>
-                      <p className="text-xs text-slate-500">
-                        目前踏破 <b className="text-emerald-700">{myEntry.unlockedTownships}</b> 個鄉鎮 ({myEntry.completionRate}%)
-                      </p>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{myEntry.avatar}</span>
+                          <span className="font-black text-slate-900 text-sm">{myEntry.nickname}</span>
+                          <span className="text-[10px] bg-emerald-600 text-white px-2 py-0.5 rounded-full font-bold">
+                            您
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          目前踏破 <b className="text-emerald-700">{myEntry.unlockedTownships}</b> 個鄉鎮 ({myEntry.completionRate}%)
+                        </p>
+                      </div>
                     </div>
+
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${myEntry.badgeColor}`}>
+                      {myEntry.badge}
+                    </span>
                   </div>
 
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${myEntry.badgeColor}`}>
-                    {myEntry.badge}
-                  </span>
+                  {/* Nickname prompt banner if using default name */}
+                  {(userProfile?.nickname === '台灣行腳勇者' || !userProfile?.nickname) && (
+                    <div className="bg-amber-100/90 border border-amber-300/80 rounded-xl p-2.5 flex items-center justify-between text-xs text-amber-950">
+                      <div className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span>您目前使用預設暱稱，建議設定專屬稱呼！</span>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('profile')}
+                        className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[11px] rounded-lg shadow-xs transition-colors shrink-0 ml-2"
+                      >
+                        去設定名片
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -438,50 +459,31 @@ export default function LeaderboardModal({
             </div>
           )}
 
-          {/* TAB 3: BADGES */}
-          {activeTab === 'badges' && (
-            <div className="space-y-3">
-              <p className="text-xs text-slate-600 leading-relaxed">
-                踏破全台 368 鄉鎮是條不平凡的壯舉旅程！隨著您的足跡擴展，將逐步解鎖榮譽徽章稱號：
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { name: '環島傳奇', count: '368 鄉鎮 (100% 全制霸)', desc: '台灣行腳界的至高傳奇！', color: 'bg-yellow-500 text-white border-yellow-600' },
-                  { name: '行腳大師', count: '200+ 鄉鎮', desc: '走過超過半個台灣，見證島嶼山海！', color: 'bg-purple-100 text-purple-700 border-purple-300' },
-                  { name: '百岳行者', count: '100+ 鄉鎮', desc: '踏破破百鄉鎮，行腳熱血燃燒！', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
-                  { name: '行腳先鋒', count: '50+ 鄉鎮', desc: '走出生活圈，深度探索台灣！', color: 'bg-blue-100 text-blue-700 border-blue-300' },
-                  { name: '探路新星', count: '10+ 鄉鎮', desc: '行腳啟航，邁出精彩第一步！', color: 'bg-amber-100 text-amber-700 border-amber-300' },
-                  { name: '行腳啟程', count: '1+ 鄉鎮', desc: '千里之行，始於足下。', color: 'bg-slate-100 text-slate-700 border-slate-300' }
-                ].map((b, idx) => (
-                  <div key={idx} className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${b.color}`}>
-                        {b.name}
-                      </span>
-                      <span className="text-[11px] font-semibold text-slate-500">{b.count}</span>
-                    </div>
-                    <p className="text-xs text-slate-600">{b.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: PROFILE SETTINGS */}
+          {/* TAB 3: PROFILE SETTINGS */}
           {activeTab === 'profile' && (
             <form onSubmit={handleSaveProfile} className="space-y-4">
               
+              {/* Nickname Hint Banner */}
+              {isPublic && (nickname === '台灣行腳勇者' || !nickname) && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-start gap-2.5 text-xs text-amber-900">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block text-amber-950">設定專屬暱稱，讓同好認識您！</span>
+                    <span className="text-[11px] text-amber-800">您目前開啟了「公開參與同好排行榜」，建議為自己取一個響亮的稱呼。若使用預設稱呼，排行榜將依規則合併顯示。</span>
+                  </div>
+                </div>
+              )}
+
               {/* Nickname */}
               <div>
                 <label className="text-xs font-bold text-slate-700 block mb-1.5">
-                  同行者稱呼 / 暱稱
+                  同行者稱呼 / 暱稱 <span className="text-emerald-600 font-normal">(風雲榜公開顯示)</span>
                 </label>
                 <input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
-                  placeholder="例如：單車阿文、美食小護士..."
+                  placeholder="例如：單車阿文、台大林醫師、美食小護士..."
                   maxLength={15}
                   required
                   className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
@@ -557,6 +559,36 @@ export default function LeaderboardModal({
               </div>
 
             </form>
+          )}
+
+          {/* TAB 4: BADGES */}
+          {activeTab === 'badges' && (
+            <div className="space-y-3">
+              <p className="text-xs text-slate-600 leading-relaxed">
+                踏破全台 368 鄉鎮是條不平凡的壯舉旅程！隨著您的足跡擴展，將逐步解鎖榮譽徽章稱號：
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { name: '環島傳奇', count: '368 鄉鎮 (100% 全制霸)', desc: '台灣行腳界的至高傳奇！', color: 'bg-yellow-500 text-white border-yellow-600' },
+                  { name: '行腳大師', count: '200+ 鄉鎮', desc: '走過超過半個台灣，見證島嶼山海！', color: 'bg-purple-100 text-purple-700 border-purple-300' },
+                  { name: '百岳行者', count: '100+ 鄉鎮', desc: '踏破破百鄉鎮，行腳熱血燃燒！', color: 'bg-emerald-100 text-emerald-700 border-emerald-300' },
+                  { name: '行腳先鋒', count: '50+ 鄉鎮', desc: '走出生活圈，深度探索台灣！', color: 'bg-blue-100 text-blue-700 border-blue-300' },
+                  { name: '探路新星', count: '10+ 鄉鎮', desc: '行腳啟航，邁出精彩第一步！', color: 'bg-amber-100 text-amber-700 border-amber-300' },
+                  { name: '行腳啟程', count: '1+ 鄉鎮', desc: '千里之行，始於足下。', color: 'bg-slate-100 text-slate-700 border-slate-300' }
+                ].map((b, idx) => (
+                  <div key={idx} className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${b.color}`}>
+                        {b.name}
+                      </span>
+                      <span className="text-[11px] font-semibold text-slate-500">{b.count}</span>
+                    </div>
+                    <p className="text-xs text-slate-600">{b.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
         </div>
