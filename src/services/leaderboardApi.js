@@ -35,6 +35,10 @@ export function calculateBadge(unlockedCount) {
   return { name: '行腳啟程', color: 'bg-slate-100 text-slate-600 border border-slate-200' };
 }
 
+import rawDistrictsData from '../../public/data/taiwan368.json';
+
+const districtsMap = new Map((rawDistrictsData || []).map(d => [Number(d.id), d]));
+
 /**
  * Calculate user stats summary and visited districts list
  */
@@ -48,8 +52,8 @@ export function calculateUserSummary(currentUserProfile, currentUserProgress) {
   const progressKeys = Object.keys(currentUserProgress || {});
   progressKeys.forEach((key) => {
     const item = currentUserProgress[key];
-    const attractionsCount = item.attractionsChecked?.length || 0;
-    const foodsCount = item.foodsChecked?.length || 0;
+    const attractionsCount = item?.attractionsChecked?.length || 0;
+    const foodsCount = item?.foodsChecked?.length || 0;
     const spotsCount = attractionsCount + foodsCount;
 
     if (spotsCount > 0) {
@@ -57,13 +61,17 @@ export function calculateUserSummary(currentUserProfile, currentUserProgress) {
       userTotalSpots += spotsCount;
       userUnlockedCount += 1;
       visitedDistrictIds.push(numId);
+      // 注意：不上傳 notes 欄位以保護用戶隱私
       visitedDistrictsMap[numId] = {
         spotsCount,
         rating: item.rating || 0,
-        notes: item.notes ? (item.notes.length > 30 ? item.notes.substring(0, 30) + '...' : item.notes) : '',
         updatedAt: item.updatedAt || new Date().toISOString()
       };
-      if (item.township) {
+      
+      const districtInfo = districtsMap.get(numId);
+      if (districtInfo) {
+        lastDistrictName = `${districtInfo.county} ${districtInfo.township}`;
+      } else if (item.township) {
         lastDistrictName = `${item.county || ''} ${item.township}`;
       }
     }
@@ -118,6 +126,17 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
   const merged = [];
 
   cloudList.forEach(entry => {
+    // If entry's lastDistrict is '尚無紀錄' but has visitedDistrictIds, auto-resolve it
+    let resolvedLastDistrict = entry.lastDistrict;
+    const entryVisited = Array.isArray(entry.visitedDistrictIds) ? entry.visitedDistrictIds : [];
+    if ((!resolvedLastDistrict || resolvedLastDistrict === '尚無紀錄') && entryVisited.length > 0) {
+      const lastId = entryVisited[entryVisited.length - 1];
+      const dInfo = districtsMap.get(Number(lastId));
+      if (dInfo) {
+        resolvedLastDistrict = `${dInfo.county} ${dInfo.township}`;
+      }
+    }
+
     const isThisMe = 
       String(entry.id) === String(myUserId) || 
       (mySummary.nickname && entry.nickname === mySummary.nickname);
@@ -143,8 +162,8 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
           completionRate: Math.max(Number(entry.completionRate || 0), mySummary.completionRate),
           badge: mySummary.badge,
           badgeColor: mySummary.badgeColor,
-          lastDistrict: mySummary.lastDistrict !== '尚無紀錄' ? mySummary.lastDistrict : (entry.lastDistrict || '尚無紀錄'),
-          visitedDistrictIds: mySummary.visitedDistrictIds,
+          lastDistrict: mySummary.lastDistrict !== '尚無紀錄' ? mySummary.lastDistrict : (resolvedLastDistrict || '尚無紀錄'),
+          visitedDistrictIds: mySummary.visitedDistrictIds.length > 0 ? mySummary.visitedDistrictIds : entryVisited,
           lastActive: '剛才'
         });
       }
@@ -153,7 +172,11 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
       if (!seenUsers.has(entry.nickname)) {
         seenUsers.add(entry.nickname);
         seenUsers.add(String(entry.id));
-        merged.push({ ...entry, isMe: false });
+        merged.push({ 
+          ...entry, 
+          lastDistrict: resolvedLastDistrict || '尚無紀錄',
+          isMe: false 
+        });
       }
     }
   });
@@ -176,9 +199,11 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
     });
   }
 
-  merged.sort((a, b) => b.unlockedTownships - a.unlockedTownships);
+  // 僅顯示有踏破進度的勇者，並依踏破數降冪排序
+  const activeTravelers = merged.filter(entry => entry.unlockedTownships > 0 || entry.isMe);
+  activeTravelers.sort((a, b) => b.unlockedTownships - a.unlockedTownships);
 
-  return merged.map((entry, index) => ({
+  return activeTravelers.map((entry, index) => ({
     ...entry,
     rank: index + 1
   }));
@@ -190,7 +215,19 @@ export async function fetchCloudLeaderboard(currentUserProfile, currentUserProgr
 export async function submitProgressToCloudLeaderboard(currentUserProfile, currentUserProgress) {
   if (!GAS_LEADERBOARD_API_URL) return;
 
+  // 尊重用戶隱私設定：若關閉「公開參與排行榜」，不上傳任何資料到雲端
+  if (currentUserProfile?.isPublic === false) {
+    console.log('[Leaderboard] User opted out of public leaderboard, skipping upload.');
+    return;
+  }
+
   const payload = calculateUserSummary(currentUserProfile, currentUserProgress);
+
+  // 若尚未踏破任何鄉鎮（踏破數為 0），暫不上傳避免空資料佔據排行榜
+  if (payload.unlockedTownships === 0) {
+    console.log('[Leaderboard] No unlocked townships yet, skipping cloud upload.');
+    return;
+  }
 
   try {
     await fetch(GAS_LEADERBOARD_API_URL, {
@@ -267,12 +304,9 @@ export function getDistrictPioneers(district, cloudData, currentUserProfile, cur
       }
       
       const visitedList = traveler.visitedDistrictIds || [];
-      const lastDist = traveler.lastDistrict || '';
 
-      const hasVisited = 
-        visitedList.includes(numId) || 
-        (districtFullName && lastDist.includes(districtFullName)) ||
-        (districtTownship && lastDist.includes(districtTownship));
+      // 只依賴精準的 visitedDistrictIds 陣列判斷，避免 lastDistrict 字串誤判
+      const hasVisited = visitedList.includes(numId);
 
       if (hasVisited) {
         seenUsers.add(traveler.nickname);

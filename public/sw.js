@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'taiwan368-v2-' + Date.now();
+const CACHE_VERSION = 'taiwan368-v1.0.0';
 
 self.addEventListener('install', (event) => {
   // Immediately activate new service worker without waiting

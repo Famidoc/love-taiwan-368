@@ -104,7 +104,7 @@ export default function QrCodeModal({ isOpen, onClose }) {
               <span>手機相機掃描即可使用：</span>
             </p>
             <p className="text-slate-600">
-              • <b>iPhone</b>：Safari 開啟後點「分享」$\to$「加入主畫面」
+              • <b>iPhone</b>：Safari 開啟後點「分享」→「加入主畫面」
             </p>
             <p className="text-slate-600">
               • <b>Android</b>：Chrome 開啟後點「加到主畫面 / 安裝」

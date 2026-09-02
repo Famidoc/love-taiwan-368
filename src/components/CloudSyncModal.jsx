@@ -284,11 +284,11 @@ export default function CloudSyncModal({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-red-900 font-bold text-sm">
                 <Trash2 className="w-4 h-4 text-red-600" />
-                <span>重置手帳 (清空所有測試資料)</span>
+                <span>重置手帳（清空所有打卡進度）</span>
               </div>
             </div>
             <p className="text-xs text-red-700 leading-relaxed">
-              當您試用完畢、準備正式出發時，點擊此處可將本機所有打卡勾選、照片與筆記一鍵歸零，重回 0% 全新狀態。
+              點擊此處可將本機所有打卡勾選、照片與筆記一鍵歸零，重回 0% 全新狀態。此動作無法復原，建議先備份後再操作。
             </p>
 
             {showConfirmReset ? (
