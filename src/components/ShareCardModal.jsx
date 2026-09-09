@@ -276,24 +276,22 @@ export default function ShareCardModal({
       ctx.font = 'bold 26px "Noto Sans TC", sans-serif';
       ctx.fillText('📍 已解鎖景點與必吃美食：', 80, infoY);
 
-      // Render 3 attractions & 3 foods
+      // Render 3 attractions & 3 foods with strict column constraints & overflow protection
       const items = [
         ...district.attractions.map((a) => ({ name: a.name, checked: attractionsChecked.includes(a.id), type: '景點' })),
         ...district.foods.map((f) => ({ name: f.name, checked: foodsChecked.includes(f.id), type: '美食' }))
       ];
 
-      let startX = 80;
-      let startY = infoY + 45;
+      const colWidth = 285;
+      const colGap = 25;
       items.forEach((it, idx) => {
-        if (idx === 3) {
-          startX = 80;
-          startY += 55;
-        }
-        ctx.fillStyle = it.checked ? (it.type === '景點' ? '#0284c7' : '#ea580c') : '#a8a29e';
-        ctx.font = it.checked ? 'bold 22px "Noto Sans TC", sans-serif' : '22px "Noto Sans TC", sans-serif';
+        const colIndex = idx % 3;
+        const rowIndex = Math.floor(idx / 3);
+        const itemX = 80 + colIndex * (colWidth + colGap);
+        const itemY = infoY + 48 + rowIndex * 55;
         const symbol = it.checked ? '✔' : '○';
-        ctx.fillText(`${symbol} ${it.name}`, startX, startY);
-        startX += 310;
+
+        drawFittedSpotItem(ctx, symbol, it.name, itemX, itemY, colWidth, it.checked, it.type);
       });
 
       // Notes Quote (if any)
@@ -313,7 +311,9 @@ export default function ShareCardModal({
       // Inside banner
       ctx.fillStyle = '#fef08a';
       ctx.font = 'bold 28px "Noto Sans TC", sans-serif';
-      ctx.fillText(`行腳者：${userProfile?.nickname || '台灣行腳勇者'}`, 120, bannerY + 55);
+      const rawNickname = userProfile?.nickname || '台灣行腳勇者';
+      const displayNickname = rawNickname.length > 15 ? rawNickname.slice(0, 15) + '…' : rawNickname;
+      ctx.fillText(`行腳者：${displayNickname}`, 120, bannerY + 55);
 
       ctx.fillStyle = '#ffffff';
       ctx.font = '22px "Noto Sans TC", sans-serif';
@@ -342,6 +342,53 @@ export default function ShareCardModal({
       setIsGenerating(false);
       setHasError(true);
     }
+  };
+
+  const drawFittedSpotItem = (ctx, symbol, name, x, y, maxWidth, isChecked, type) => {
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = isChecked ? (type === '景點' ? '#0284c7' : '#ea580c') : '#a8a29e';
+
+    const fontWeight = isChecked ? 'bold ' : '';
+    const fontFamily = '"Noto Sans TC", sans-serif';
+    const symbolStr = `${symbol} `;
+
+    // 預設字級 22px
+    let fontSize = 22;
+    ctx.font = `${fontWeight}${fontSize}px ${fontFamily}`;
+    const fullText = `${symbolStr}${name}`;
+
+    // 1. 若原始字級完全放得下，直接繪製
+    if (ctx.measureText(fullText).width <= maxWidth) {
+      ctx.fillText(fullText, x, y);
+      ctx.restore();
+      return;
+    }
+
+    // 2. 嘗試自動縮小字級 (21px -> 16px) 以盡量容納完整地名
+    for (let s = 21; s >= 16; s--) {
+      ctx.font = `${fontWeight}${s}px ${fontFamily}`;
+      if (ctx.measureText(fullText).width <= maxWidth) {
+        ctx.fillText(fullText, x, y);
+        ctx.restore();
+        return;
+      }
+    }
+
+    // 3. 若縮至 16px 依然超過 maxWidth，進行截斷並加上 '…'
+    ctx.font = `${fontWeight}16px ${fontFamily}`;
+    const ellipsis = '…';
+    const prefixWidth = ctx.measureText(symbolStr).width;
+    const ellipsisWidth = ctx.measureText(ellipsis).width;
+    const availableWidthForName = maxWidth - prefixWidth - ellipsisWidth;
+
+    let truncated = name;
+    while (truncated.length > 0 && ctx.measureText(truncated).width > availableWidthForName) {
+      truncated = truncated.slice(0, -1);
+    }
+
+    ctx.fillText(`${symbolStr}${truncated}${ellipsis}`, x, y);
+    ctx.restore();
   };
 
   const drawRedStamp = (ctx, cx, cy, text, date) => {
