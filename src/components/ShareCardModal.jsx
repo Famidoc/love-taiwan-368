@@ -265,7 +265,8 @@ export default function ShareCardModal({
       ctx.fillText('★'.repeat(rating) + '☆'.repeat(5 - rating), photoFrameX + photoFrameW - 40, photoFrameY + photoFrameH - 45);
 
       // Circular Stamp (Vintage Red Stamp)
-      drawRedStamp(ctx, W - 180, photoFrameY + photoFrameH - 30, '踏破認證', visitDate);
+      const isCompleted = attractionsChecked.length >= 3 && foodsChecked.length >= 3;
+      drawRedStamp(ctx, W - 180, photoFrameY + photoFrameH - 30, isCompleted ? '全制霸認證' : '踏破認證', visitDate);
 
       // Footprint stats card at bottom
       const infoY = 900;
@@ -276,11 +277,22 @@ export default function ShareCardModal({
       ctx.font = 'bold 26px "Noto Sans TC", sans-serif';
       ctx.fillText('📍 已解鎖景點與必吃美食：', 80, infoY);
 
-      // Render 3 attractions & 3 foods with strict column constraints & overflow protection
-      const items = [
+      // 支援官方推薦與自訂私房點，優先展示已打卡完成的 3 景點 + 3 美食
+      const customAttractions = progress?.customAttractions || [];
+      const customFoods = progress?.customFoods || [];
+
+      const allAttractions = [
         ...district.attractions.map((a) => ({ name: a.name, checked: attractionsChecked.includes(a.id), type: '景點' })),
-        ...district.foods.map((f) => ({ name: f.name, checked: foodsChecked.includes(f.id), type: '美食' }))
+        ...customAttractions.map((a) => ({ name: `[私房] ${a.name}`, checked: attractionsChecked.includes(a.id), type: '景點' }))
       ];
+      const allFoods = [
+        ...district.foods.map((f) => ({ name: f.name, checked: foodsChecked.includes(f.id), type: '美食' })),
+        ...customFoods.map((f) => ({ name: `[私房] ${f.name}`, checked: foodsChecked.includes(f.id), type: '美食' }))
+      ];
+
+      const sortedAtts = [...allAttractions].sort((a, b) => (b.checked ? 1 : 0) - (a.checked ? 1 : 0)).slice(0, 3);
+      const sortedFoods = [...allFoods].sort((a, b) => (b.checked ? 1 : 0) - (a.checked ? 1 : 0)).slice(0, 3);
+      const items = [...sortedAtts, ...sortedFoods];
 
       const colWidth = 285;
       const colGap = 25;

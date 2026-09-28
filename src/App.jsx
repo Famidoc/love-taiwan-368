@@ -28,8 +28,7 @@ import CommunityBanner from './components/CommunityBanner';
 import DistrictPioneersModal from './components/DistrictPioneersModal';
 import QrCodeModal from './components/QrCodeModal';
 import UserGuideModal from './components/UserGuideModal';
-
-
+import ReportSpotModal from './components/ReportSpotModal';
 
 // Directly import raw 368 data for instant loading and 100% path safety on GitHub Pages & offline
 import rawDistrictsData from '../public/data/taiwan368.json';
@@ -43,6 +42,7 @@ import {
 
 import { gdriveService, DEFAULT_GOOGLE_CLIENT_ID } from './services/gdrive';
 import { submitProgressToCloudLeaderboard } from './services/leaderboardApi';
+import { loadCachedReports, fetchCommunityReports, submitSpotReport } from './services/spotReportService';
 
 export default function App() {
 
@@ -51,6 +51,7 @@ export default function App() {
   const [progressMap, setProgressMap] = useState({});
   const [userProfile, setUserProfile] = useState(loadUserProfile());
   const [cloudSyncState, setCloudSyncState] = useState('idle'); // 'idle' | 'syncing' | 'synced' | 'error'
+  const [spotReports, setSpotReports] = useState(loadCachedReports());
 
   // UI Views & Modals
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'map'
@@ -63,6 +64,7 @@ export default function App() {
   const [activeCheckinDistrict, setActiveCheckinDistrict] = useState(null);
   const [activeShareDistrict, setActiveShareDistrict] = useState(null);
   const [activePioneersDistrict, setActivePioneersDistrict] = useState(null);
+  const [activeReportTarget, setActiveReportTarget] = useState(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isCommunityOpen, setIsCommunityOpen] = useState(false);
@@ -153,6 +155,10 @@ export default function App() {
             console.log('[AutoSync] Silent login waiting for user gesture');
           }
         }
+        // Load community reported spot alerts (closed / not found)
+        fetchCommunityReports().then(reps => {
+          if (reps) setSpotReports(reps);
+        }).catch(err => console.log('Community reports fetch error:', err));
       } catch (err) {
         console.error('Failed to load user progress:', err);
       }
@@ -194,6 +200,8 @@ export default function App() {
       districtId,
       attractionsChecked: [],
       foodsChecked: [],
+      customAttractions: [],
+      customFoods: [],
       rating: 5,
       completedDate: new Date().toISOString().split('T')[0],
       notes: '',
@@ -218,9 +226,11 @@ export default function App() {
     }
 
     const total = nextAttractions.length + nextFoods.length;
-    const isCompleted = total === 6;
+    // 全制霸規則：景點打卡 >= 3 且 美食打卡 >= 3
+    const isCompleted = nextAttractions.length >= 3 && nextFoods.length >= 3;
+    const wasCompleted = (current.attractionsChecked?.length >= 3) && (current.foodsChecked?.length >= 3);
 
-    if (isCompleted) {
+    if (isCompleted && !wasCompleted) {
       confetti({
         particleCount: 100,
         spread: 80,
@@ -247,6 +257,116 @@ export default function App() {
     setProgressMap(nextProgress);
     saveUserProgress(nextProgress);
     // 卡片快速點擊：僅保存到本地及 Google Drive，不上傳公開風雲榜
+    triggerAutoCloudBackup(nextProgress, userProfile, false);
+  };
+
+  // 新增使用者私房景點或私房美食
+  const handleAddCustomSpot = (districtId, type, spotName) => {
+    const current = progressMap[districtId] || {
+      districtId,
+      attractionsChecked: [],
+      foodsChecked: [],
+      customAttractions: [],
+      customFoods: [],
+      rating: 5,
+      completedDate: new Date().toISOString().split('T')[0],
+      notes: '',
+      photos: []
+    };
+
+    const newSpotId = `cust_${type === 'attraction' ? 'att' : 'food'}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newSpot = { id: newSpotId, name: spotName };
+
+    let nextCustomAttractions = [...(current.customAttractions || [])];
+    let nextCustomFoods = [...(current.customFoods || [])];
+    let nextAttractionsChecked = [...(current.attractionsChecked || [])];
+    let nextFoodsChecked = [...(current.foodsChecked || [])];
+
+    if (type === 'attraction') {
+      nextCustomAttractions.push(newSpot);
+      if (!nextAttractionsChecked.includes(newSpotId)) {
+        nextAttractionsChecked.push(newSpotId);
+      }
+    } else {
+      nextCustomFoods.push(newSpot);
+      if (!nextFoodsChecked.includes(newSpotId)) {
+        nextFoodsChecked.push(newSpotId);
+      }
+    }
+
+    const isCompleted = nextAttractionsChecked.length >= 3 && nextFoodsChecked.length >= 3;
+    const wasCompleted = (current.attractionsChecked?.length >= 3) && (current.foodsChecked?.length >= 3);
+
+    if (isCompleted && !wasCompleted) {
+      confetti({
+        particleCount: 100,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#10b981', '#f59e0b', '#0284c7', '#ec4899']
+      });
+    }
+
+    const updatedDistrict = {
+      ...current,
+      districtId,
+      visited: (nextAttractionsChecked.length + nextFoodsChecked.length) > 0,
+      isCompleted,
+      customAttractions: nextCustomAttractions,
+      customFoods: nextCustomFoods,
+      attractionsChecked: nextAttractionsChecked,
+      foodsChecked: nextFoodsChecked,
+      updatedAt: new Date().toISOString()
+    };
+
+    const nextProgress = {
+      ...progressMap,
+      [districtId]: updatedDistrict
+    };
+
+    setProgressMap(nextProgress);
+    saveUserProgress(nextProgress);
+    triggerAutoCloudBackup(nextProgress, userProfile, false);
+  };
+
+  // 刪除使用者私房景點或私房美食
+  const handleRemoveCustomSpot = (districtId, type, spotId) => {
+    const current = progressMap[districtId];
+    if (!current) return;
+
+    let nextCustomAttractions = [...(current.customAttractions || [])];
+    let nextCustomFoods = [...(current.customFoods || [])];
+    let nextAttractionsChecked = [...(current.attractionsChecked || [])];
+    let nextFoodsChecked = [...(current.foodsChecked || [])];
+
+    if (type === 'attraction') {
+      nextCustomAttractions = nextCustomAttractions.filter(s => s.id !== spotId);
+      nextAttractionsChecked = nextAttractionsChecked.filter(id => id !== spotId);
+    } else {
+      nextCustomFoods = nextCustomFoods.filter(s => s.id !== spotId);
+      nextFoodsChecked = nextFoodsChecked.filter(id => id !== spotId);
+    }
+
+    const isCompleted = nextAttractionsChecked.length >= 3 && nextFoodsChecked.length >= 3;
+
+    const updatedDistrict = {
+      ...current,
+      districtId,
+      visited: (nextAttractionsChecked.length + nextFoodsChecked.length) > 0,
+      isCompleted,
+      customAttractions: nextCustomAttractions,
+      customFoods: nextCustomFoods,
+      attractionsChecked: nextAttractionsChecked,
+      foodsChecked: nextFoodsChecked,
+      updatedAt: new Date().toISOString()
+    };
+
+    const nextProgress = {
+      ...progressMap,
+      [districtId]: updatedDistrict
+    };
+
+    setProgressMap(nextProgress);
+    saveUserProgress(nextProgress);
     triggerAutoCloudBackup(nextProgress, userProfile, false);
   };
 
@@ -289,6 +409,20 @@ export default function App() {
     triggerAutoCloudBackup({}, userProfile);
   };
 
+  // 開啟店家/景點狀態回報彈窗
+  const handleOpenReport = (district, spot, spotType) => {
+    setActiveReportTarget({ district, spot, spotType });
+  };
+
+  // 提交店家狀態回報（已歇業 / 找不到 / 平反正常）
+  const handleSubmitReport = async (reportData) => {
+    const updated = await submitSpotReport({
+      ...reportData,
+      userProfile
+    });
+    setSpotReports(updated);
+  };
+
   // Filtered districts list
   const filteredDistricts = useMemo(() => {
     return districts.filter((d) => {
@@ -304,10 +438,11 @@ export default function App() {
 
       // Status filter
       const userProg = progressMap[d.id];
-      const checkedCount = (userProg?.attractionsChecked?.length || 0) + (userProg?.foodsChecked?.length || 0);
-      if (statusFilter === 'completed' && checkedCount !== 6) return false;
-      if (statusFilter === 'in_progress' && (checkedCount === 0 || checkedCount === 6)) return false;
-      if (statusFilter === 'unvisited' && checkedCount > 0) return false;
+      const isCompleted = (userProg?.attractionsChecked?.length || 0) >= 3 && (userProg?.foodsChecked?.length || 0) >= 3;
+      const isVisited = ((userProg?.attractionsChecked?.length || 0) + (userProg?.foodsChecked?.length || 0)) > 0;
+      if (statusFilter === 'completed' && !isCompleted) return false;
+      if (statusFilter === 'in_progress' && (!isVisited || isCompleted)) return false;
+      if (statusFilter === 'unvisited' && isVisited) return false;
 
       // Search Query
       if (searchQuery.trim()) {
@@ -492,8 +627,8 @@ export default function App() {
                 className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-700 font-medium"
               >
                 <option value="all">全部打卡狀態</option>
-                <option value="completed">🌟 6/6 全制霸</option>
-                <option value="in_progress">👣 踏破進行中 (1~5點)</option>
+                <option value="completed">🌟 全制霸 (景點≥3 & 美食≥3)</option>
+                <option value="in_progress">👣 踏破進行中 (已有打卡)</option>
                 <option value="unvisited">⚪ 尚未造訪</option>
               </select>
             </div>
@@ -548,6 +683,10 @@ export default function App() {
                 onOpenCheckin={(d) => setActiveCheckinDistrict(d)}
                 onOpenShareCard={(d) => setActiveShareDistrict(d)}
                 onOpenPioneers={(d) => setActivePioneersDistrict(d)}
+                onAddCustomSpot={handleAddCustomSpot}
+                onRemoveCustomSpot={handleRemoveCustomSpot}
+                spotReports={spotReports}
+                onOpenReport={handleOpenReport}
               />
             ))}
           </div>
@@ -582,6 +721,8 @@ export default function App() {
         onClose={() => setActiveCheckinDistrict(null)}
         onSaveProgress={handleSaveProgress}
         onOpenShareCard={(d) => setActiveShareDistrict(d)}
+        spotReports={spotReports}
+        onOpenReport={handleOpenReport}
       />
 
       {/* 2. Share Polaroid Achievement Card Modal */}
@@ -642,6 +783,15 @@ export default function App() {
       <UserGuideModal
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
+      />
+
+      {/* 9. Report Spot Status Modal (Closed / Not Found) */}
+      <ReportSpotModal
+        target={activeReportTarget}
+        isOpen={Boolean(activeReportTarget)}
+        onClose={() => setActiveReportTarget(null)}
+        onSubmitReport={handleSubmitReport}
+        existingReport={activeReportTarget ? spotReports[activeReportTarget.spot.id] : null}
       />
 
 

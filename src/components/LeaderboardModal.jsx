@@ -79,7 +79,7 @@ export default function LeaderboardModal({
           attsCount,
           foodsCount,
           totalCount,
-          isCompleted: totalCount === 6,
+          isCompleted: attsCount >= 3 && foodsCount >= 3,
           rating: p.rating || 0,
           notes: p.notes || '',
           photosCount: p.photos?.length || 0,
@@ -349,7 +349,7 @@ export default function LeaderboardModal({
                   </div>
                   <div className="bg-emerald-950/40 p-2 rounded-xl">
                     <span className="text-base font-black text-amber-300 block">{totalCompletedDistricts}</span>
-                    <span className="text-[10px] text-emerald-200">全制霸鄉鎮 (6/6)</span>
+                    <span className="text-[10px] text-emerald-200">全制霸鄉鎮</span>
                   </div>
                   <div className="bg-emerald-950/40 p-2 rounded-xl">
                     <span className="text-base font-black text-sky-300 block">
@@ -414,7 +414,7 @@ export default function LeaderboardModal({
                                 </span>
                               ) : (
                                 <span className="text-[10px] bg-amber-100 text-amber-800 border border-amber-300 px-1.5 py-0.2 rounded-full font-semibold">
-                                  {totalCount}/6
+                                  {totalCount} 點完成
                                 </span>
                               )}
                             </div>

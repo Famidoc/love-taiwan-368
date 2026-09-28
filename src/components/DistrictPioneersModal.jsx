@@ -125,7 +125,7 @@ export default function DistrictPioneersModal({
                 </h4>
                 <p className="text-[11px] text-slate-500 mt-0.5">
                   {isMyDistrictVisited 
-                    ? `目前已完成 ${mySpotsCount}/6 個景點與美食`
+                    ? `目前已完成 ${mySpotsCount} 個景點與美食踩點`
                     : '踏訪此區並打卡，您的名字將出現在先行者名錄上！'}
                 </p>
               </div>
@@ -189,7 +189,7 @@ export default function DistrictPioneersModal({
 
                         <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
                           <span className="text-emerald-700 font-medium">
-                            完成度 {traveler.spotsCount}/6
+                            已踩點 {traveler.spotsCount} 個
                           </span>
                           {traveler.rating > 0 && (
                             <span className="text-amber-500 font-bold">

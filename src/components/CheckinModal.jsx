@@ -14,10 +14,13 @@ import {
   Share2, 
   Image as ImageIcon,
   MapPin,
-  AlertTriangle
+  AlertTriangle,
+  Plus,
+  Flag
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { compressImage } from '../services/storage';
+import { getSpotReportInfo } from '../services/spotReportService';
 
 export default function CheckinModal({
   district,
@@ -25,7 +28,9 @@ export default function CheckinModal({
   isOpen,
   onClose,
   onSaveProgress,
-  onOpenShareCard
+  onOpenShareCard,
+  spotReports,
+  onOpenReport
 }) {
   if (!isOpen || !district) return null;
 
@@ -34,6 +39,13 @@ export default function CheckinModal({
 
   const [attractionsChecked, setAttractionsChecked] = useState([]);
   const [foodsChecked, setFoodsChecked] = useState([]);
+  const [customAttractions, setCustomAttractions] = useState([]);
+  const [customFoods, setCustomFoods] = useState([]);
+  const [isAddingAttraction, setIsAddingAttraction] = useState(false);
+  const [newAttractionName, setNewAttractionName] = useState('');
+  const [isAddingFood, setIsAddingFood] = useState(false);
+  const [newFoodName, setNewFoodName] = useState('');
+
   const [rating, setRating] = useState(5);
   const [visitDate, setVisitDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
@@ -45,6 +57,8 @@ export default function CheckinModal({
     if (progress) {
       setAttractionsChecked(progress.attractionsChecked || []);
       setFoodsChecked(progress.foodsChecked || []);
+      setCustomAttractions(progress.customAttractions || []);
+      setCustomFoods(progress.customFoods || []);
       setRating(progress.rating || 5);
       setVisitDate(progress.completedDate || new Date().toISOString().split('T')[0]);
       setNotes(progress.notes || '');
@@ -52,11 +66,17 @@ export default function CheckinModal({
     } else {
       setAttractionsChecked([]);
       setFoodsChecked([]);
+      setCustomAttractions([]);
+      setCustomFoods([]);
       setRating(5);
       setVisitDate(new Date().toISOString().split('T')[0]);
       setNotes('');
       setPhotos([]);
     }
+    setIsAddingAttraction(false);
+    setNewAttractionName('');
+    setIsAddingFood(false);
+    setNewFoodName('');
     setShowUnsavedConfirm(false);
   }, [district, progress, isOpen]);
 
@@ -76,8 +96,46 @@ export default function CheckinModal({
     });
   };
 
+  const handleAddCustomAttraction = () => {
+    if (!newAttractionName.trim()) return;
+    const newId = `cust_att_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newSpot = { id: newId, name: newAttractionName.trim() };
+    setCustomAttractions(prev => [...prev, newSpot]);
+    setAttractionsChecked(prev => {
+      const next = [...prev, newId];
+      checkCelebration(next.length, foodsChecked.length);
+      return next;
+    });
+    setNewAttractionName('');
+    setIsAddingAttraction(false);
+  };
+
+  const handleRemoveCustomAttraction = (id) => {
+    setCustomAttractions(prev => prev.filter(s => s.id !== id));
+    setAttractionsChecked(prev => prev.filter(x => x !== id));
+  };
+
+  const handleAddCustomFood = () => {
+    if (!newFoodName.trim()) return;
+    const newId = `cust_food_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newSpot = { id: newId, name: newFoodName.trim() };
+    setCustomFoods(prev => [...prev, newSpot]);
+    setFoodsChecked(prev => {
+      const next = [...prev, newId];
+      checkCelebration(attractionsChecked.length, next.length);
+      return next;
+    });
+    setNewFoodName('');
+    setIsAddingFood(false);
+  };
+
+  const handleRemoveCustomFood = (id) => {
+    setCustomFoods(prev => prev.filter(s => s.id !== id));
+    setFoodsChecked(prev => prev.filter(x => x !== id));
+  };
+
   const checkCelebration = (attCount, foodCount) => {
-    if (attCount === 3 && foodCount === 3) {
+    if (attCount >= 3 && foodCount >= 3) {
       confetti({
         particleCount: 80,
         spread: 70,
@@ -129,6 +187,8 @@ export default function CheckinModal({
   const checkHasUnsavedChanges = () => {
     const initialAtts = progress?.attractionsChecked || [];
     const initialFoods = progress?.foodsChecked || [];
+    const initialCustomAtts = progress?.customAttractions || [];
+    const initialCustomFoods = progress?.customFoods || [];
     const initialRating = progress?.rating || 5;
     const initialNotes = progress?.notes || '';
     const initialPhotos = progress?.photos || [];
@@ -136,12 +196,14 @@ export default function CheckinModal({
 
     const attsChanged = JSON.stringify([...attractionsChecked].sort()) !== JSON.stringify([...initialAtts].sort());
     const foodsChanged = JSON.stringify([...foodsChecked].sort()) !== JSON.stringify([...initialFoods].sort());
+    const customAttsChanged = JSON.stringify(customAttractions) !== JSON.stringify(initialCustomAtts);
+    const customFoodsChanged = JSON.stringify(customFoods) !== JSON.stringify(initialCustomFoods);
     const ratingChanged = rating !== initialRating;
     const notesChanged = (notes || '').trim() !== initialNotes.trim();
     const photosChanged = photos.length !== initialPhotos.length || JSON.stringify(photos.map(p => p.id)) !== JSON.stringify(initialPhotos.map(p => p.id));
     const dateChanged = visitDate !== initialDate;
 
-    return attsChanged || foodsChanged || ratingChanged || notesChanged || photosChanged || dateChanged;
+    return attsChanged || foodsChanged || customAttsChanged || customFoodsChanged || ratingChanged || notesChanged || photosChanged || dateChanged;
   };
 
   // Guard when closing
@@ -155,7 +217,8 @@ export default function CheckinModal({
 
   const handleSave = () => {
     const total = attractionsChecked.length + foodsChecked.length;
-    const isCompleted = total === 6;
+    // 全制霸門檻：景點 >= 3 且 美食 >= 3
+    const isCompleted = attractionsChecked.length >= 3 && foodsChecked.length >= 3;
 
     const data = {
       districtId: district.id,
@@ -166,6 +229,8 @@ export default function CheckinModal({
       completedDate: visitDate,
       attractionsChecked,
       foodsChecked,
+      customAttractions,
+      customFoods,
       rating,
       notes,
       photos,
@@ -179,7 +244,8 @@ export default function CheckinModal({
 
   const handleSaveAndShare = () => {
     const total = attractionsChecked.length + foodsChecked.length;
-    const isCompleted = total === 6;
+    // 全制霸門檻：景點 >= 3 且 美食 >= 3
+    const isCompleted = attractionsChecked.length >= 3 && foodsChecked.length >= 3;
 
     const data = {
       districtId: district.id,
@@ -190,6 +256,8 @@ export default function CheckinModal({
       completedDate: visitDate,
       attractionsChecked,
       foodsChecked,
+      customAttractions,
+      customFoods,
       rating,
       notes,
       photos,
@@ -245,16 +313,21 @@ export default function CheckinModal({
             <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
               <span className="flex items-center gap-1.5 text-sky-700">
                 <Camera className="w-4 h-4" />
-                <span>必訪 3 大景點打卡</span>
+                <span>景點打卡（滿 3 點即達標）</span>
               </span>
-              <span className="text-slate-400 font-mono">
+              <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
+                attractionsChecked.length >= 3 ? 'bg-emerald-100 text-emerald-800 font-bold' : 'text-slate-400 bg-slate-100'
+              }`}>
                 {attractionsChecked.length}/3
               </span>
             </div>
 
             <div className="space-y-2">
+              {/* 官方推薦景點 */}
               {district.attractions.map((att, idx) => {
                 const isChecked = attractionsChecked.includes(att.id);
+                const repInfo = getSpotReportInfo(spotReports, att.id);
+
                 return (
                   <div
                     key={att.id}
@@ -262,19 +335,34 @@ export default function CheckinModal({
                     className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                       isChecked
                         ? 'bg-sky-50 border-sky-300 text-sky-950 font-medium shadow-2xs'
+                        : repInfo
+                        ? 'bg-rose-50/40 border-rose-200 text-slate-700 hover:bg-rose-50/70'
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 truncate pr-2">
+                    <div className="flex items-center gap-2 truncate pr-2">
                       <span className="w-5 h-5 rounded-full bg-sky-100 text-sky-700 text-[11px] font-mono flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
-                      <span className="text-xs sm:text-sm font-semibold truncate">
+                      <span className={`text-xs sm:text-sm font-semibold truncate ${repInfo?.reason === 'closed' ? 'line-through text-slate-400' : ''}`}>
                         {att.name}
                       </span>
+                      {repInfo && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded text-[10px] font-bold shrink-0 flex items-center gap-0.5 ${
+                            repInfo.reason === 'closed'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}
+                          title={`已有 ${repInfo.count} 位同好回報「${repInfo.label}」`}
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          <span>{repInfo.label}</span>
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <a
                         href={getGoogleMapsUrl(att.name)}
                         target="_blank"
@@ -286,6 +374,22 @@ export default function CheckinModal({
                         <MapPin className="w-4 h-4 text-sky-500" />
                       </a>
 
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenReport?.(district, att, 'attraction');
+                        }}
+                        className={`p-1.5 rounded-xl transition-colors ${
+                          repInfo
+                            ? 'text-rose-500 hover:bg-rose-100'
+                            : 'text-slate-300 hover:text-amber-600 hover:bg-amber-50'
+                        }`}
+                        title={repInfo ? `已被標註為「${repInfo.label}」，點此查看或平反` : '回報店家狀態（已歇業 / 找不到）'}
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                      </button>
+
                       {isChecked ? (
                         <CheckCircle2 className="w-5 h-5 text-sky-600 fill-sky-100" />
                       ) : (
@@ -295,6 +399,105 @@ export default function CheckinModal({
                   </div>
                 );
               })}
+
+              {/* 使用者自訂景點 */}
+              {customAttractions.map((cAtt) => {
+                const isChecked = attractionsChecked.includes(cAtt.id);
+                return (
+                  <div
+                    key={cAtt.id}
+                    onClick={() => toggleAttraction(cAtt.id)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                      isChecked
+                        ? 'bg-sky-50 border-sky-300 text-sky-950 font-medium shadow-2xs ring-1 ring-sky-200'
+                        : 'bg-white border-sky-200 text-slate-700 hover:bg-sky-50/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate pr-2">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-200 text-sky-900 shrink-0">
+                        私房
+                      </span>
+                      <span className="text-xs sm:text-sm font-semibold truncate">
+                        {cAtt.name}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={getGoogleMapsUrl(cAtt.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 text-slate-400 hover:text-sky-600 hover:bg-sky-100 rounded-xl transition-colors"
+                        title="開啟 Google 地圖定位導航"
+                      >
+                        <MapPin className="w-4 h-4 text-sky-500" />
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveCustomAttraction(cAtt.id);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        title="刪除此私房景點"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      {isChecked ? (
+                        <CheckCircle2 className="w-5 h-5 text-sky-600 fill-sky-100" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-slate-300" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* 新增私房景點按鈕或輸入框 */}
+              {isAddingAttraction ? (
+                <div className="flex items-center gap-2 p-2 bg-sky-50 rounded-2xl border border-sky-200">
+                  <input
+                    type="text"
+                    placeholder="輸入私房景點名稱..."
+                    value={newAttractionName}
+                    onChange={(e) => setNewAttractionName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAddCustomAttraction();
+                    }}
+                    className="flex-1 text-xs px-3 py-1.5 bg-white border border-sky-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomAttraction}
+                    className="px-3 py-1.5 text-xs font-bold bg-sky-600 hover:bg-sky-700 text-white rounded-xl transition-colors"
+                  >
+                    新增
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingAttraction(false);
+                      setNewAttractionName('');
+                    }}
+                    className="px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-200 rounded-xl transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingAttraction(true)}
+                  className="w-full py-2 px-3 text-xs font-medium text-sky-700 hover:text-sky-900 bg-sky-50/50 hover:bg-sky-100/70 border border-dashed border-sky-300 rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>＋ 新增私房景點</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -303,16 +506,21 @@ export default function CheckinModal({
             <div className="flex items-center justify-between text-xs font-bold text-slate-700 mb-2">
               <span className="flex items-center gap-1.5 text-orange-700">
                 <Utensils className="w-4 h-4" />
-                <span>必吃 3 大在地美食打卡</span>
+                <span>在地美食打卡（滿 3 點即達標）</span>
               </span>
-              <span className="text-slate-400 font-mono">
+              <span className={`text-[11px] font-mono px-2 py-0.5 rounded-full ${
+                foodsChecked.length >= 3 ? 'bg-emerald-100 text-emerald-800 font-bold' : 'text-slate-400 bg-slate-100'
+              }`}>
                 {foodsChecked.length}/3
               </span>
             </div>
 
             <div className="space-y-2">
+              {/* 官方推薦美食 */}
               {district.foods.map((food, idx) => {
                 const isChecked = foodsChecked.includes(food.id);
+                const repInfo = getSpotReportInfo(spotReports, food.id);
+
                 return (
                   <div
                     key={food.id}
@@ -320,19 +528,34 @@ export default function CheckinModal({
                     className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                       isChecked
                         ? 'bg-orange-50 border-orange-300 text-orange-950 font-medium shadow-2xs'
+                        : repInfo
+                        ? 'bg-rose-50/40 border-rose-200 text-slate-700 hover:bg-rose-50/70'
                         : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5 truncate pr-2">
+                    <div className="flex items-center gap-2 truncate pr-2">
                       <span className="w-5 h-5 rounded-full bg-orange-100 text-orange-700 text-[11px] font-mono flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
-                      <span className="text-xs sm:text-sm font-semibold truncate">
+                      <span className={`text-xs sm:text-sm font-semibold truncate ${repInfo?.reason === 'closed' ? 'line-through text-slate-400' : ''}`}>
                         {food.name}
                       </span>
+                      {repInfo && (
+                        <span
+                          className={`px-1.5 py-0.2 rounded text-[10px] font-bold shrink-0 flex items-center gap-0.5 ${
+                            repInfo.reason === 'closed'
+                              ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : 'bg-amber-100 text-amber-800 border border-amber-200'
+                          }`}
+                          title={`已有 ${repInfo.count} 位同好回報「${repInfo.label}」`}
+                        >
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          <span>{repInfo.label}</span>
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <a
                         href={getGoogleMapsUrl(food.name)}
                         target="_blank"
@@ -344,6 +567,22 @@ export default function CheckinModal({
                         <MapPin className="w-4 h-4 text-orange-500" />
                       </a>
 
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenReport?.(district, food, 'food');
+                        }}
+                        className={`p-1.5 rounded-xl transition-colors ${
+                          repInfo
+                            ? 'text-rose-500 hover:bg-rose-100'
+                            : 'text-slate-300 hover:text-amber-600 hover:bg-amber-50'
+                        }`}
+                        title={repInfo ? `已被標註為「${repInfo.label}」，點此查看或平反` : '回報店家狀態（已歇業 / 找不到）'}
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                      </button>
+
                       {isChecked ? (
                         <CheckCircle2 className="w-5 h-5 text-orange-600 fill-orange-100" />
                       ) : (
@@ -353,6 +592,105 @@ export default function CheckinModal({
                   </div>
                 );
               })}
+
+              {/* 使用者自訂美食 */}
+              {customFoods.map((cFood) => {
+                const isChecked = foodsChecked.includes(cFood.id);
+                return (
+                  <div
+                    key={cFood.id}
+                    onClick={() => toggleFood(cFood.id)}
+                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                      isChecked
+                        ? 'bg-orange-50 border-orange-300 text-orange-950 font-medium shadow-2xs ring-1 ring-orange-200'
+                        : 'bg-white border-orange-200 text-slate-700 hover:bg-orange-50/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate pr-2">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-200 text-orange-900 shrink-0">
+                        私房
+                      </span>
+                      <span className="text-xs sm:text-sm font-semibold truncate">
+                        {cFood.name}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <a
+                        href={getGoogleMapsUrl(cFood.name)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 text-slate-400 hover:text-orange-600 hover:bg-orange-100 rounded-xl transition-colors"
+                        title="開啟 Google 地圖定位導航"
+                      >
+                        <MapPin className="w-4 h-4 text-orange-500" />
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveCustomFood(cFood.id);
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                        title="刪除此私房美食"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
+                      {isChecked ? (
+                        <CheckCircle2 className="w-5 h-5 text-orange-600 fill-orange-100" />
+                      ) : (
+                        <Circle className="w-5 h-5 text-slate-300" />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* 新增私房美食按鈕或輸入框 */}
+              {isAddingFood ? (
+                <div className="flex items-center gap-2 p-2 bg-orange-50 rounded-2xl border border-orange-200">
+                  <input
+                    type="text"
+                    placeholder="輸入私房美食名稱..."
+                    value={newFoodName}
+                    onChange={(e) => setNewFoodName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAddCustomFood();
+                    }}
+                    className="flex-1 text-xs px-3 py-1.5 bg-white border border-orange-300 rounded-xl focus:outline-none focus:ring-1 focus:ring-orange-500"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddCustomFood}
+                    className="px-3 py-1.5 text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white rounded-xl transition-colors"
+                  >
+                    新增
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingFood(false);
+                      setNewFoodName('');
+                    }}
+                    className="px-2 py-1.5 text-xs text-slate-500 hover:bg-slate-200 rounded-xl transition-colors"
+                  >
+                    取消
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingFood(true)}
+                  className="w-full py-2 px-3 text-xs font-medium text-orange-700 hover:text-orange-900 bg-orange-50/50 hover:bg-orange-100/70 border border-dashed border-orange-300 rounded-2xl flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>＋ 新增私房美食</span>
+                </button>
+              )}
             </div>
           </div>
 

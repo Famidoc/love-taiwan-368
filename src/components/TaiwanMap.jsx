@@ -220,7 +220,7 @@ export default function TaiwanMap({
                   const attractionsChecked = userProg?.attractionsChecked?.length || 0;
                   const foodsChecked = userProg?.foodsChecked?.length || 0;
                   const totalChecked = attractionsChecked + foodsChecked;
-                  const isDone = totalChecked === 6;
+                  const isDone = attractionsChecked >= 3 && foodsChecked >= 3;
                   const isPartial = totalChecked > 0 && !isDone;
 
                   return (
@@ -251,9 +251,9 @@ export default function TaiwanMap({
 
                       <div className="flex items-center gap-2">
                         <span className={`text-[11px] font-semibold ${
-                          isDone ? 'text-emerald-700' : isPartial ? 'text-amber-700' : 'text-slate-400'
+                          isDone ? 'text-emerald-700 font-bold' : isPartial ? 'text-amber-700' : 'text-slate-400'
                         }`}>
-                          {totalChecked}/6 點完成
+                          {isDone ? '全制霸' : `${attractionsChecked}/3景 • ${foodsChecked}/3食`}
                         </span>
                         <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
                       </div>
