@@ -163,7 +163,7 @@ export default function DistrictCard({
             {/* 官方推薦景點 */}
             {district.attractions.map((att, idx) => {
               const isChecked = attractionsChecked.includes(att.id);
-              const repInfo = getSpotReportInfo(spotReports, att.id);
+              const repInfo = getSpotReportInfo(spotReports, att.id, district.id);
 
               return (
                 <div
@@ -365,7 +365,7 @@ export default function DistrictCard({
             {/* 官方推薦美食 */}
             {district.foods.map((food, idx) => {
               const isChecked = foodsChecked.includes(food.id);
-              const repInfo = getSpotReportInfo(spotReports, food.id);
+              const repInfo = getSpotReportInfo(spotReports, food.id, district.id);
 
               return (
                 <div

@@ -14,14 +14,46 @@ const DEFAULT_REPORTS = {
 };
 
 /**
+ * 取得全台唯一的景點/美食複合識別碼（防止跨鄉鎮 ID 如 A1、F1 撞名）
+ * 例如：第 73 區 (臺中市潭子區) 的 A1 -> "73_A1"
+ */
+export function getSpotCompositeId(districtId, spotId) {
+  if (!spotId) return '';
+  const strId = String(spotId);
+  if (!districtId || strId.startsWith(`${districtId}_`)) {
+    return strId;
+  }
+  return `${districtId}_${strId}`;
+}
+
+/**
  * Load cached reports from localStorage
+ * 自動過濾並修復過去未加上鄉鎮編號的裸 key（如 A1、F1），杜絕跨區污染
  */
 export function loadCachedReports() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_REPORTS);
     if (!raw) return { ...DEFAULT_REPORTS };
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_REPORTS, ...parsed };
+    const cleaned = {};
+
+    Object.keys(parsed).forEach(k => {
+      const item = parsed[k];
+      if (!item) return;
+
+      // 若是裸 key（如 A1, F1, F2）
+      if (/^[AF][1-3]$/.test(k)) {
+        if (item.districtId) {
+          const newKey = `${item.districtId}_${k}`;
+          cleaned[newKey] = { ...item, spotId: newKey };
+        }
+        // 沒有 districtId 的裸 key 直接拋棄，徹底清理污染
+      } else {
+        cleaned[k] = item;
+      }
+    });
+
+    return cleaned;
   } catch (e) {
     console.warn('Failed to load cached spot reports:', e);
     return { ...DEFAULT_REPORTS };
@@ -51,8 +83,23 @@ export async function fetchCommunityReports() {
     if (res.ok) {
       const json = await res.json();
       if (json.status === 'success' && json.data) {
+        const cloudCleaned = {};
+        Object.keys(json.data).forEach(k => {
+          const item = json.data[k];
+          if (!item) return;
+
+          if (/^[AF][1-3]$/.test(k)) {
+            if (item.districtId) {
+              const newKey = `${item.districtId}_${k}`;
+              cloudCleaned[newKey] = { ...item, spotId: newKey };
+            }
+          } else {
+            cloudCleaned[k] = item;
+          }
+        });
+
         const local = loadCachedReports();
-        const merged = { ...local, ...json.data };
+        const merged = { ...local, ...cloudCleaned };
         saveCachedReports(merged);
         return merged;
       }
@@ -76,17 +123,21 @@ export async function submitSpotReport({
   userProfile = null
 }) {
   const userId = getOrCreateUserId(userProfile);
+  const compositeSpotId = getSpotCompositeId(districtId, spotId);
   const currentReports = loadCachedReports();
   const nextReports = { ...currentReports };
 
   const now = new Date().toISOString();
 
+  // 清除舊有的未加區碼的裸 key（例如 "A1"、"F1"、"F2"）以防干擾
+  delete nextReports[spotId];
+
   if (reason === 'normal') {
     // 平反：移除或解除異常警示
-    delete nextReports[spotId];
+    delete nextReports[compositeSpotId];
   } else {
-    const existing = nextReports[spotId] || {
-      spotId,
+    const existing = nextReports[compositeSpotId] || {
+      spotId: compositeSpotId,
       districtId,
       spotName,
       spotType,
@@ -104,9 +155,9 @@ export async function submitSpotReport({
       notesList.push(note);
     }
 
-    nextReports[spotId] = {
+    nextReports[compositeSpotId] = {
       ...existing,
-      spotId,
+      spotId: compositeSpotId,
       districtId,
       spotName,
       spotType,
@@ -130,7 +181,7 @@ export async function submitSpotReport({
         body: JSON.stringify({
           action: 'report_spot',
           districtId,
-          spotId,
+          spotId: compositeSpotId, // 傳遞包含鄉鎮編號的唯一複合ID
           spotName,
           spotType,
           reason,
@@ -153,12 +204,15 @@ export async function submitSpotReport({
 /**
  * Helper to inspect single spot report status
  */
-export function getSpotReportInfo(reportsMap, spotId) {
-  if (!reportsMap || !spotId || !reportsMap[spotId]) {
+export function getSpotReportInfo(reportsMap, spotId, districtId = null) {
+  if (!reportsMap || !spotId) {
     return null;
   }
-  const rep = reportsMap[spotId];
-  if (!rep.reason) return null;
+
+  // 優先以複合 ID（如 73_A1）查找，若無 districtId 則退回 spotId
+  const key = districtId ? getSpotCompositeId(districtId, spotId) : spotId;
+  const rep = reportsMap[key];
+  if (!rep || !rep.reason) return null;
 
   return {
     isReported: true,

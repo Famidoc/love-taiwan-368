@@ -42,7 +42,7 @@ import {
 
 import { gdriveService, DEFAULT_GOOGLE_CLIENT_ID } from './services/gdrive';
 import { submitProgressToCloudLeaderboard } from './services/leaderboardApi';
-import { loadCachedReports, fetchCommunityReports, submitSpotReport } from './services/spotReportService';
+import { loadCachedReports, fetchCommunityReports, submitSpotReport, getSpotReportInfo } from './services/spotReportService';
 
 export default function App() {
 
@@ -791,7 +791,7 @@ export default function App() {
         isOpen={Boolean(activeReportTarget)}
         onClose={() => setActiveReportTarget(null)}
         onSubmitReport={handleSubmitReport}
-        existingReport={activeReportTarget ? spotReports[activeReportTarget.spot.id] : null}
+        existingReport={activeReportTarget ? getSpotReportInfo(spotReports, activeReportTarget.spot.id, activeReportTarget.district.id) : null}
       />
 
 

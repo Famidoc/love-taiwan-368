@@ -227,8 +227,17 @@ function handleGetSpotReports() {
   if (data.length > 1) {
     for (var i = 1; i < data.length; i++) {
       var row = data[i];
-      var spotId = String(row[2] || '').trim();
-      if (!spotId) continue;
+      var districtId = row[1];
+      var rawSpotId = String(row[2] || '').trim();
+      if (!rawSpotId) continue;
+
+      // 自動將裸 ID (如 A1, F1, F2) 結合 districtId 形成唯一識別碼 (如 73_A1)
+      var spotId = rawSpotId;
+      if (districtId && (/^[AF][1-3]$/.test(spotId) || !spotId.includes('_'))) {
+        spotId = districtId + '_' + spotId;
+      } else if (!districtId && /^[AF][1-3]$/.test(spotId)) {
+        continue;
+      }
 
       var reason = String(row[5] || '').trim();
       // 若最新回報為 normal，代表平反恢復正常
@@ -238,7 +247,6 @@ function handleGetSpotReports() {
       }
 
       var time = row[0];
-      var districtId = row[1];
       var spotName = String(row[3] || '');
       var spotType = String(row[4] || '');
       var note = String(row[6] || '').trim();
@@ -277,12 +285,17 @@ function handleGetSpotReports() {
  * 儲存單筆店家狀態回報
  */
 function handlePostSpotReport(payload) {
-  var spotId = String(payload.spotId || '').trim();
-  if (!spotId || spotId.length > 80) {
+  var rawSpotId = String(payload.spotId || '').trim();
+  if (!rawSpotId || rawSpotId.length > 80) {
     return jsonResponse({ status: 'error', message: 'Invalid spotId' });
   }
 
   var districtId = parseInt(payload.districtId) || 0;
+  var spotId = rawSpotId;
+  if (districtId && (/^[AF][1-3]$/.test(spotId) || !spotId.includes('_'))) {
+    spotId = districtId + '_' + spotId;
+  }
+
   var spotName = sanitizeString(payload.spotName || '', 50);
   var spotType = sanitizeString(payload.spotType || '', 20);
   var reason = String(payload.reason || 'closed').trim();
